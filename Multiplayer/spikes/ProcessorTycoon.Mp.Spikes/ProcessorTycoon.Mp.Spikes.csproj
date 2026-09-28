@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- M0 experiments (docs/ROADMAP.md). Separate plugin so throwaway code never reaches the real mod; never packaged (D28).
+       Deploy only into testbeds: ..\build.ps1 -Deploy -DeployRoot <testbed>. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ProcessorTycoon.Mp.Spikes</AssemblyName>
+    <RootNamespace>ProcessorTycoonMp.Spikes</RootNamespace>
+    <Version>0.0.1</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RestoreAdditionalProjectSources>https://api.nuget.org/v3/index.json;https://nuget.bepinex.dev/v3/index.json;https://nuget.samboy.dev/v3/index.json</RestoreAdditionalProjectSources>
+    <RequiresGame>true</RequiresGame>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.*" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.*" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.0.65" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" Publicize="true">
+      <HintPath>$(GameManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
+    <Error Condition="'$(DeployRoot)' == ''" Text="Set DeployRoot to a testbed (docs/TESTING.md)." />
+    <PropertyGroup>
+      <PluginDir>$(DeployRoot)\BepInEx\plugins\ProcessorTycoon.Mp.Spikes</PluginDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pdb" DestinationFolder="$(PluginDir)" ContinueOnError="true" />
+  </Target>
+</Project>

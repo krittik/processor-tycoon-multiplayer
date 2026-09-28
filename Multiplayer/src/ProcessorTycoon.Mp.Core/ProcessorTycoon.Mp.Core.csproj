@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Unity-free core: protocol, session, clock, delta engine, transports, MP saves. No third-party dependencies (D22). -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ProcessorTycoon.Mp.Core</AssemblyName>
+    <RootNamespace>ProcessorTycoonMp.Core</RootNamespace>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

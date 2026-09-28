@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- BepInEx plugin. Only Adapter/ may use Assembly-CSharp internals (publicized at compile time, D23). -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>ProcessorTycoon.Mp</AssemblyName>
+    <RootNamespace>ProcessorTycoonMp</RootNamespace>
+    <Version>0.3.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RestoreAdditionalProjectSources>https://api.nuget.org/v3/index.json;https://nuget.bepinex.dev/v3/index.json;https://nuget.samboy.dev/v3/index.json</RestoreAdditionalProjectSources>
+    <RequiresGame>true</RequiresGame>
+    <!-- Steam transport (D50): fetched by ..\..\tools\fetch-steamworks.ps1, never committed. -->
+    <SteamworksDir>$(RepoRoot)artifacts\lib\Steamworks.NET-2025.164.1\Windows-x64</SteamworksDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.*" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.*" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.0.65" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProcessorTycoon.Mp.Core\ProcessorTycoon.Mp.Core.csproj" />
+    <Reference Include="Assembly-CSharp" Publicize="true">
+      <HintPath>$(GameManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameManagedDir)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Steamworks.NET">
+      <HintPath>$(SteamworksDir)\Steamworks.NET.dll</HintPath>
+    </Reference>
+    <None Include="$(SteamworksDir)\steam_api64.dll" Link="steam_api64.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(GameManagedDir)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckSteamworks" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SteamworksDir)\Steamworks.NET.dll')">
+    <Error Text="Steamworks.NET not found in $(SteamworksDir): run Multiplayer\tools\fetch-steamworks.ps1 (D50)." />
+  </Target>
+
+  <!-- Opt-in deploy into a testbed (D29): ..\..\build.ps1 -Deploy -DeployRoot ..\artifacts\testbeds\A -->
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
+    <Error Condition="'$(DeployRoot)' == ''" Text="Set DeployRoot to a test game copy (docs/TESTING.md)." />
+    <PropertyGroup>
+      <PluginDir>$(DeployRoot)\BepInEx\plugins\ProcessorTycoon.Mp</PluginDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)ProcessorTycoon.Mp.Core.dll;$(TargetDir)Steamworks.NET.dll;$(TargetDir)steam_api64.dll" DestinationFolder="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pdb;$(TargetDir)ProcessorTycoon.Mp.Core.pdb" DestinationFolder="$(PluginDir)" ContinueOnError="true" />
+  </Target>
+</Project>

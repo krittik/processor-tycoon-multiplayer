@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/ProcessorTycoon.Mp.Core/ProcessorTycoon.Mp.Core.csproj" />
+  <Project Path="src/ProcessorTycoon.Mp/ProcessorTycoon.Mp.csproj" />
+  <Project Path="spikes/ProcessorTycoon.Mp.Spikes/ProcessorTycoon.Mp.Spikes.csproj" />
+  <Project Path="tests/ProcessorTycoon.Mp.Tests/ProcessorTycoon.Mp.Tests.csproj" />
+</Solution>
