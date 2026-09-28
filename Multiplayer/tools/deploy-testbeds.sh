@@ -18,9 +18,11 @@ dotnet run --project "$DEV/Multiplayer/tests/ProcessorTycoon.Mp.Tests" 2>&1 | ta
 for t in $TESTBEDS; do
   dotnet build "$DEV/Multiplayer/Multiplayer.slnx" -c Debug -p:Deploy=true -p:DeployRoot="$DEV/artifacts/testbeds/$t" 2>&1 | grep -E " error |Build succeeded" | sort -u
 done
-# The Agent mod in the testbeds follows the repository build when one exists (Agent/build.ps1 -NoDeploy).
-AGENT_DLL=$(ls "$DEV"/Agent/src/ProcessorTycoon.Mod/bin/Debug/*/ProcessorTycoon.Mod.dll 2>/dev/null | head -1)
-AGENT_CLI="$DEV/artifacts/agent/tools/pt-agent.exe"
+# The Agent mod in the testbeds follows its local build when one exists (Agent/build.ps1 -NoDeploy): in this repository
+# or in a clone of processor-tycoon-agent next to it.
+AGENT=""; for a in "$DEV" "$DEV/../processor-tycoon-agent"; do [ -d "$a/Agent/src" ] && { AGENT="$(cd "$a" && pwd)"; break; }; done
+AGENT_DLL=$([ -n "$AGENT" ] && ls "$AGENT"/Agent/src/ProcessorTycoon.Mod/bin/Debug/*/ProcessorTycoon.Mod.dll 2>/dev/null | head -1)
+AGENT_CLI="$AGENT/artifacts/agent/tools/pt-agent.exe"
 for t in $TESTBEDS; do
   [ -n "$AGENT_DLL" ] && [ -d "$DEV/artifacts/testbeds/$t/BepInEx/plugins/ProcessorTycoon.Mod" ] && cp "$AGENT_DLL" "$DEV/artifacts/testbeds/$t/BepInEx/plugins/ProcessorTycoon.Mod/"
   [ -f "$AGENT_CLI" ] && [ -d "$DEV/artifacts/testbeds/$t/tools" ] && cp "$AGENT_CLI" "$DEV/artifacts/testbeds/$t/tools/pt-agent.exe"

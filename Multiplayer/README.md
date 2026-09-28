@@ -46,7 +46,7 @@ bash tools/soak-multi.sh 10 3                    # 4 players from a new game wit
 
 Testbeds, fixture saves and decompiled game source: see [docs/TESTING.md](docs/TESTING.md) and the [repository README](../README.md). Fixture saves are not part of the public repository; any save of your own works.
 
-The plugin compiles against the game folder resolved per the [repository README](../README.md) (`-GameDir`, `PT_GAME_DIR`, or the repository's parent). `Assembly-CSharp` is publicized at compile time, so private game members are directly accessible. Steamworks.NET is fetched by `tools/fetch-steamworks.ps1` during the build.
+The plugin compiles against the game folder resolved per the [repository README](../README.md) (`-GameDir`, `PT_GAME_DIR`, or the folder containing the repository or the one above it). `Assembly-CSharp` is publicized at compile time, so private game members are directly accessible. Steamworks.NET is fetched by `tools/fetch-steamworks.ps1` during the build.
 
 ## Relationship to the Agent mod
 
