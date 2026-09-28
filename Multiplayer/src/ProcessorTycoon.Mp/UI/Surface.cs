@@ -81,7 +81,7 @@ internal sealed class Window
         layout.childForceExpandHeight = false;
         Frame.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         Frame.sizeDelta = new Vector2(width, 100);
-        var follow = Holder.gameObject.AddComponent<FollowFrame>();
+        follow = Holder.gameObject.AddComponent<FollowFrame>();
         follow.Frame = Frame; follow.Shadow = shadow.rectTransform; follow.Outline = outline.rectTransform;
 
         var bar = Kit.Fill(Kit.Rect("TopBar", Frame), Paint.TopBar, null);
@@ -89,7 +89,7 @@ internal sealed class Window
         var barShadow = bar.gameObject.AddComponent<Shadow>();
         barShadow.effectColor = new Color(0, 0, 0, .12f);
         barShadow.effectDistance = new Vector2(0, -1);
-        bar.gameObject.AddComponent<Drag>().Target = Holder;
+        bar.gameObject.AddComponent<Drag>().Owner = follow;
         Title = Kit.Label(bar.transform, title, 18, Paint.TopBarText);
         Kit.Stretch(Title.rectTransform, 10, closable ? 44 : 10);
         if (closable)
@@ -113,13 +113,22 @@ internal sealed class Window
         Holder.gameObject.SetActive(false);
     }
 
+    private readonly FollowFrame follow;
+
     public bool Visible => Holder.gameObject.activeSelf;
 
     public void Show(Vector2? position = null)
     {
-        if (position.HasValue) Holder.anchoredPosition = position.Value;
+        if (position.HasValue) { follow.DockAbove = null; Holder.anchoredPosition = position.Value; }
         Holder.gameObject.SetActive(true);
         Holder.SetAsLastSibling();
+    }
+
+    // Docks the window above a bottom-bar item (right edges aligned) until the player drags it, like the Agent mod's window.
+    public void ShowAbove(RectTransform item)
+    {
+        follow.DockAbove = item;
+        Show();
     }
 
     public void Close()
@@ -149,12 +158,24 @@ internal sealed class Window
 internal sealed class FollowFrame : MonoBehaviour
 {
     public RectTransform Frame = null!, Shadow = null!, Outline = null!;
+    public RectTransform? DockAbove;
     private void LateUpdate()
     {
         var size = Frame.rect.size;
         Place(Outline, size + new Vector2(2, 2));
         Place(Shadow, size + new Vector2(29, 29));
         Frame.anchoredPosition = Vector2.zero;
+        var holder = (RectTransform)transform;
+        var parent = (RectTransform)holder.parent;
+        if (DockAbove != null && DockAbove.gameObject.activeInHierarchy)
+        {
+            var corner = parent.InverseTransformPoint(DockAbove.TransformPoint(new Vector3(DockAbove.rect.xMax, DockAbove.rect.yMax)));
+            holder.anchoredPosition = new Vector2(corner.x - size.x / 2, corner.y + 6 + size.y / 2);
+        }
+        // Keep the whole window on screen.
+        var half = parent.rect.size / 2;
+        var p = holder.anchoredPosition;
+        holder.anchoredPosition = new Vector2(Mathf.Clamp(p.x, -half.x + size.x / 2, half.x - size.x / 2), Mathf.Clamp(p.y, -half.y + size.y / 2, half.y - size.y / 2));
     }
 
     private void Place(RectTransform r, Vector2 size)
@@ -168,15 +189,12 @@ internal sealed class FollowFrame : MonoBehaviour
 
 internal sealed class Drag : MonoBehaviour, IDragHandler, IBeginDragHandler
 {
-    public RectTransform Target = null!;
-    public void OnBeginDrag(PointerEventData e) => Target.SetAsLastSibling();
+    public FollowFrame Owner = null!;
+    public void OnBeginDrag(PointerEventData e) { Owner.DockAbove = null; Owner.transform.SetAsLastSibling(); }
     public void OnDrag(PointerEventData e)
     {
-        var canvas = Target.GetComponentInParent<Canvas>();
-        Target.anchoredPosition += e.delta / (canvas != null ? canvas.scaleFactor : 1f);
-        var s = Surface.Get();
-        var p = Target.anchoredPosition;
-        Target.anchoredPosition = new Vector2(Mathf.Clamp(p.x, -s.Width / 2 + 60, s.Width / 2 - 60), Mathf.Clamp(p.y, -s.Height / 2 + 30, s.Height / 2 - 15));
+        var canvas = Owner.GetComponentInParent<Canvas>();
+        ((RectTransform)Owner.transform).anchoredPosition += e.delta / (canvas != null ? canvas.scaleFactor : 1f);
     }
 }
 

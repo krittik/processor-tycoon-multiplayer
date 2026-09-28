@@ -12,7 +12,7 @@ namespace ProcessorTycoonMp.UI;
 internal sealed class Dialogs
 {
     private readonly MpRuntime runtime;
-    private Window? credits, deal, bankrupt;
+    private Window? credits, deal, bankrupt, diagnostics;
     private BusinessDeals.Proposal? shownDeal;
     private bool bankruptPending;
     private int creditsRevision;
@@ -30,9 +30,28 @@ internal sealed class Dialogs
 
     public void ShowBankrupt() => bankruptPending = true;
 
+    // After "Diagnostics": where the report went and what to do with it.
+    public void ShowDiagnostics(string zipPath)
+    {
+        diagnostics?.Destroy();
+        var w = new Window("Diagnostics", 440);
+        var b = w.Body;
+        Kit.Label(b, "A report for bug reports was saved:", 16, wrap: true);
+        Kit.Label(b, System.IO.Path.GetFileName(zipPath), 15, Paint.TextLow);
+        Kit.Label(b, "It holds the game's log (BepInEx/LogOutput.log), the multiplayer settings and any desync reports. Attach it to a GitHub issue or share it on Discord; check it for anything private first.", 15, wrap: true);
+        var footer = w.Footer();
+        string folder = System.IO.Path.GetDirectoryName(zipPath) ?? "";
+        Kit.Button(footer.transform, "Open folder", () => Application.OpenURL("file:///" + folder.Replace('\\', '/')), height: 28, size: 15);
+        Kit.Button(footer.transform, "Report an issue", () => Application.OpenURL(ModInfo.Issues), height: 28, size: 15);
+        Kit.Button(footer.transform, "Close", w.Close, height: 28, size: 15);
+        diagnostics = w;
+        w.Show(Vector2.zero);
+    }
+
     public void CloseAll()
     {
         credits?.Close();
+        diagnostics?.Close();
         bankrupt?.Close();
         deal?.Close();
     }

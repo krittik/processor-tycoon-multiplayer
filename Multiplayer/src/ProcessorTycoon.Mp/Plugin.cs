@@ -20,6 +20,7 @@ public sealed class Plugin : BaseUnityPlugin
     internal ConfigEntry<string> PlayerName = null!;
     internal ConfigEntry<string> HostPort = null!;
     internal ConfigEntry<string> JoinAddress = null!;
+    internal ConfigEntry<string> HostVia = null!;
     private ConfigEntry<string> clientId = null!;
     private ConfigEntry<bool> steamEnabled = null!;
     private ConfigEntry<bool> steamForceRelay = null!;
@@ -32,7 +33,10 @@ public sealed class Plugin : BaseUnityPlugin
 
     private void Awake()
     {
-        PlayerName = Config.Bind("Player", "Name", Environment.UserName, "Your name in multiplayer sessions (also your company's name when you join).");
+        PlayerName = Config.Bind("Player", "Name", "", "Your name in multiplayer sessions. Empty: your Steam name, or \"Player\".");
+        // Earlier versions defaulted to the Windows user name; never show that to other players unless it was typed in.
+        if (PlayerName.Value == Environment.UserName) PlayerName.Value = "";
+        HostVia = Config.Bind("Network", "HostVia", "Steam", "How you host: Steam (friends join through Steam, no port forwarding) or Address (players connect to your IP address and HostPort).");
         HostPort = Config.Bind("Network", "HostPort", TcpTransport.DefaultPort.ToString(), "TCP port to listen on when hosting (forward it for internet play).");
         JoinAddress = Config.Bind("Network", "JoinAddress", "127.0.0.1:" + TcpTransport.DefaultPort, "Last address joined (ip:port, or steam:<Steam id>).");
         steamEnabled = Config.Bind("Steam", "Enabled", true, "Offer Steam hosting and joining (friends, no port forwarding). Steam starts when you open the multiplayer panel and shows you as playing Spacewar (Valve's test app).");

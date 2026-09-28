@@ -18,7 +18,7 @@ internal sealed class MpUi
     {
         Look.Refresh();
         dialogs = new Dialogs(runtime);
-        main = new MainWindow(runtime, plugin, dialogs.ShowCredits);
+        main = new MainWindow(runtime, plugin, dialogs.ShowCredits, dialogs.ShowDiagnostics);
         tray = new Tray(runtime, Toggle);
         menu = new MenuEntry(() => Show(true));
         notices = new Notices(runtime);
@@ -28,8 +28,16 @@ internal sealed class MpUi
         Bankruptcy.LocalBankrupt += dialogs.ShowBankrupt;
     }
 
-    public void Toggle() => main.Window.Toggle();
-    public void Show(bool visible) { if (visible) main.Window.Show(); else main.Window.Close(); }
+    // One window, two entries: the bottom-bar item during a game (the window opens above it) and the main menu's
+    // Multiplayer entry (centred). F9 does the same as the item.
+    public void Toggle()
+    {
+        if (main.Window.Visible) main.Window.Close();
+        else if (Surface.InMenu) main.Window.Show(Vector2.zero);
+        else main.Window.ShowAbove(tray.Item);
+    }
+
+    public void Show(bool visible) { if (!visible) main.Window.Close(); else if (!main.Window.Visible) Toggle(); }
     public void ShowCredits() => dialogs.ShowCredits();
     public void CloseAll() { main.Window.Close(); dialogs.CloseAll(); }
 
@@ -39,6 +47,7 @@ internal sealed class MpUi
         tray.Refresh();
         menu.Refresh();
         main.Refresh();
+        main.TickPendingHost(tray.Item);
         setup.Tick();
         dialogs.Tick();
         notices.Tick();

@@ -11,16 +11,18 @@ using Paint = ProcessorTycoonMp.UI.Look.Paint;
 
 namespace ProcessorTycoonMp.UI;
 
-// Status entry in the game's bottom bar, styled like the Agent mod's tray and placed left of it when that mod runs:
-// "Multiplayer · Hosting · 3 players". Click opens the Multiplayer window.
+// Status entry in the game's bottom bar during a game, built like the Agent mod's item and placed left of it when that mod
+// runs: "Multiplayer · hosting · 3 online". Click opens the Multiplayer window above it. In the main menu the menu's own
+// Multiplayer entry takes its place.
 internal sealed class Tray
 {
     private readonly MpRuntime runtime;
     private readonly RectTransform root;
     private readonly TextMeshProUGUI label;
     private readonly Image icon;
-    private readonly TooltipData tooltip;
     private string shown = "";
+
+    public RectTransform Item => root;
 
     public Tray(MpRuntime runtime, Action toggle)
     {
@@ -42,20 +44,26 @@ internal sealed class Tray
         button.navigation = new Navigation { mode = Navigation.Mode.None };
         button.onClick.AddListener(() => toggle());
         root.gameObject.AddComponent<HandCursor>();
-        var row = root.gameObject.AddComponent<HorizontalLayoutGroup>();
+        // The contents shrink on press like the Agent mod's item (and the game's buttons).
+        var content = Kit.Rect("Tray content", root);
+        Kit.Stretch(content, 0, 0);
+        content.pivot = new Vector2(.5f, .5f);
+        root.gameObject.AddComponent<PressFeedback>().Target = content;
+        var row = content.gameObject.AddComponent<HorizontalLayoutGroup>();
         row.padding = new RectOffset(10, 10, 0, 0);
         row.spacing = 8;
         row.childAlignment = TextAnchor.MiddleLeft;
         row.childControlWidth = row.childControlHeight = true;
         row.childForceExpandWidth = row.childForceExpandHeight = false;
-        icon = Kit.Icon(root, "employees", 18, Paint.Tray);
-        label = Kit.Label(root, "Multiplayer", 15, Paint.Tray);
-        tooltip = Kit.Tooltip(root.gameObject, "Multiplayer " + ModInfo.Short, "Host or join a shared game, see the players and chat. Shortcut: F9.");
+        icon = Kit.Icon(content, "employees", 18, Paint.Tray);
+        label = Kit.Label(content, "Multiplayer", 15, Paint.Tray);
     }
 
     public void Refresh()
     {
         bool gameplay = SceneManager.GetActiveScene().name != "Main Menu Scene";
+        if (root.gameObject.activeSelf != gameplay) root.gameObject.SetActive(gameplay);
+        if (!gameplay) return;
         var s = runtime.Session;
         string text = s == null ? (runtime.Busy ? "Multiplayer · resuming…" : "Multiplayer")
             : s.State != SessionState.Running ? (s is PeerSession p && p.PendingSetup != null ? "Multiplayer · founding your company" : "Multiplayer · connecting…")

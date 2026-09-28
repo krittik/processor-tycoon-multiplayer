@@ -131,6 +131,7 @@ internal static class Kit
         button.navigation = new Navigation { mode = Navigation.Mode.None };
         button.onClick.AddListener(() => onClick());
         image.gameObject.AddComponent<HandCursor>();
+        image.gameObject.AddComponent<PressFeedback>().Target = image.rectTransform;
         // The label sizes the button (padding 14): no measuring before the text has rendered.
         var fit = image.gameObject.AddComponent<HorizontalLayoutGroup>();
         fit.padding = new RectOffset(14, 14, 0, 0);
@@ -144,6 +145,20 @@ internal static class Kit
         layout.minWidth = width >= 0 ? width : 70;
         if (width >= 0) layout.preferredWidth = width;
         return button;
+    }
+
+    // The version in a window footer: a quiet text that turns into a link on hover and opens the About window (as in the
+    // Agent mod's window).
+    public static void VersionLink(Transform parent, string text, Action action)
+    {
+        var label = Label(parent, text, 14, Paint.TextLow);
+        label.raycastTarget = true;
+        var button = label.gameObject.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
+        button.onClick.AddListener(() => action());
+        label.gameObject.AddComponent<HandCursor>();
+        label.gameObject.AddComponent<LinkHover>().Text = label;
     }
 
     // A text whose <link="url"> parts open their web page when clicked (hand cursor over the text).
@@ -296,6 +311,36 @@ internal sealed class LightOnly : MonoBehaviour
 {
     public Behaviour Target = null!;
     private void LateUpdate() { if (Target != null) Target.enabled = !Look.Dark; }
+}
+
+// The native button press (the game's UIAnimationButton): a short ease-out shrink while held.
+internal sealed class PressFeedback : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+{
+    public RectTransform Target = null!;
+    public float Pressed = .9825f;
+    private float from = 1, to = 1, started;
+
+    public void OnPointerDown(PointerEventData data) { var s = GetComponent<Selectable>(); if (data.button == PointerEventData.InputButton.Left && (s == null || s.interactable)) Animate(Pressed); }
+    public void OnPointerUp(PointerEventData data) { if (data.button == PointerEventData.InputButton.Left) Animate(1); }
+    public void OnPointerExit(PointerEventData data) => Animate(1);
+    private void OnDisable() { if (Target != null) Target.localScale = Vector3.one; from = to = 1; }
+    private void Animate(float scale) { if (Target == null) return; from = Target.localScale.x; to = scale; started = Time.unscaledTime; }
+
+    private void Update()
+    {
+        if (Target == null) return;
+        float progress = Mathf.Clamp01((Time.unscaledTime - started) / .1f);
+        float scale = Mathf.Lerp(from, to, 1 - Mathf.Pow(1 - progress, 4));
+        Target.localScale = new Vector3(scale, scale, 1);
+    }
+}
+
+// Version link: underlined in the call-to-action colour while hovered.
+internal sealed class LinkHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+{
+    public TextMeshProUGUI Text = null!;
+    public void OnPointerEnter(PointerEventData data) { Painted.Set(Text, Paint.Cta); Text.fontStyle |= FontStyles.Underline; }
+    public void OnPointerExit(PointerEventData data) { Painted.Set(Text, Paint.TextLow); Text.fontStyle &= ~FontStyles.Underline; }
 }
 
 internal sealed class TextLinks : MonoBehaviour, IPointerClickHandler

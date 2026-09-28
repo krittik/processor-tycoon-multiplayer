@@ -14,13 +14,14 @@ using Paint = ProcessorTycoonMp.UI.Look.Paint;
 
 namespace ProcessorTycoonMp.UI;
 
-// The Multiplayer window (D59): lobby (host / join / resume) or the running session (players, chat). Rebuilt when the
-// mode changes; its texts refresh twice a second.
+// The Multiplayer window (D59): lobby (host a game / join a game / continue a saved session) or the running session
+// (players, chat). Rebuilt when the mode changes; its texts refresh twice a second.
 internal sealed class MainWindow
 {
     private readonly MpRuntime runtime;
     private readonly Plugin plugin;
     private readonly Action openCredits;
+    private readonly Action<string> showDiagnostics;
     public readonly Window Window;
     private readonly List<Action> refreshers = new();
     private HorizontalLayoutGroup? footer;
@@ -31,16 +32,42 @@ internal sealed class MainWindow
     private RectTransform? friendsList, playersList, chatList;
     private TMP_InputField? chatInput;
     private string chatDraft = "";
+    // "New game and host" / "Load a save and host" from the main menu: host once the game is running.
+    private bool hostWhenLoaded;
 
-    public MainWindow(MpRuntime runtime, Plugin plugin, Action openCredits)
+    public MainWindow(MpRuntime runtime, Plugin plugin, Action openCredits, Action<string> showDiagnostics)
     {
         this.runtime = runtime;
         this.plugin = plugin;
         this.openCredits = openCredits;
+        this.showDiagnostics = showDiagnostics;
         Window = new Window("Multiplayer", 500);
     }
 
-    private string Name => string.IsNullOrWhiteSpace(plugin.PlayerName.Value) ? Environment.UserName : plugin.PlayerName.Value.Trim();
+    // Never the Windows user name: what the player typed, else their Steam name, else "Player".
+    private string Name => string.IsNullOrWhiteSpace(plugin.PlayerName.Value) ? DefaultName : plugin.PlayerName.Value.Trim();
+    private static string DefaultName => SteamGate.Ready && SteamGate.LocalName.Length > 0 ? SteamGate.LocalName : "Player";
+    private bool ViaSteam => SteamGate.Enabled && !string.Equals(plugin.HostVia.Value, "Address", StringComparison.OrdinalIgnoreCase);
+    private string HostAddress => ViaSteam ? SteamGate.AddressPrefix : plugin.HostPort.Value;
+    private bool HostReady => !ViaSteam || SteamGate.Ready;
+
+    public void TickPendingHost(RectTransform trayItem)
+    {
+        if (!hostWhenLoaded || !runtime.CanHost) return;
+        hostWhenLoaded = false;
+        if (ViaSteam && !SteamGate.TryInit(force: true)) { runtime.Log("MP: could not host on Steam: " + SteamGate.Error); return; }
+        runtime.Host(HostAddress, Name);
+        Window.ShowAbove(trayItem);
+    }
+
+    // The main menu's own New Game / Load Game buttons (found by their label).
+    private static bool PressMenu(string label)
+    {
+        var button = UnityEngine.Object.FindObjectsByType<Button>(FindObjectsSortMode.None)
+            .FirstOrDefault(b => b.isActiveAndEnabled && b.transform.parent != null && b.transform.parent.name == "Buttons" && b.GetComponentInChildren<TMP_Text>()?.text.Trim() == label);
+        button?.onClick.Invoke();
+        return button != null;
+    }
 
     public void Refresh()
     {
@@ -89,64 +116,105 @@ internal sealed class MainWindow
     private void BuildLobby(Transform b)
     {
         SteamGate.TryInit();
-        Kit.Input(b, "Your name", plugin.PlayerName.Value, 32, v => plugin.PlayerName.Value = v.Trim(), Environment.UserName);
+        Kit.Input(b, "Your name", plugin.PlayerName.Value, 32, v => plugin.PlayerName.Value = v.Trim(), DefaultName);
 
-        Section(b, "Steam", "browser");
-        var status = Kit.Label(b, "", 15, Paint.TextLow, wrap: true);
-        var hostRow = Kit.Row(b);
-        var hostSteam = Kit.Button(hostRow.transform, "Host on Steam", () => runtime.Host(SteamGate.AddressPrefix, Name), cta: true);
-        var retry = Kit.Button(hostRow.transform, "Retry Steam", () => SteamGate.TryInit(force: true));
-        Kit.Label(b, "Friends hosting", 16);
-        friendsList = Kit.Scroll(b, 92);
+        // Host: the transport is an explicit choice, and each one says what the other players need.
+        Section(b, "Host a game", "employees");
+        Kit.Label(b, "Your game becomes the shared world: the same market, AI rivals and calendar for everyone. Up to 7 more players join, each with a company of their own.", 15, Paint.TextLow, wrap: true);
+        var viaRow = Kit.Row(b, 6, 28);
+        Kit.Size(Kit.Label(viaRow.transform, "Connect through", 15), width: 130);
+        if (SteamGate.Enabled) Kit.Button(viaRow.transform, "Steam", () => SetVia("Steam"), cta: ViaSteam, height: 26, size: 15);
+        Kit.Button(viaRow.transform, "IP address", () => SetVia("Address"), cta: !ViaSteam, height: 26, size: 15);
+        var how = Kit.Label(b, "", 15, wrap: true);
+        HorizontalLayoutGroup? steamRetryRow = null;
+        if (ViaSteam)
+        {
+            steamRetryRow = Kit.Row(b, 6, 28);
+            Kit.Button(steamRetryRow.transform, "Retry Steam", () => SteamGate.TryInit(force: true), height: 26, size: 15);
+        }
+        else
+        {
+            var portRow = Kit.Row(b, 8, 28);
+            Kit.Size(Kit.Label(portRow.transform, "Port", 15), width: 130);
+            Kit.Input(portRow.transform, "", plugin.HostPort.Value, 6, v => plugin.HostPort.Value = v.Trim(), width: 90);
+            var addresses = Kit.Label(b, "", 15, Paint.TextLow, wrap: true);
+            refreshers.Add(() => addresses.text = "Your addresses on this PC: " + string.Join(",  ", LocalAddresses()));
+        }
+        var hostRow = Kit.Row(b, 8, 30);
+        Button? hostNow = null, hostNew = null, hostLoad = null;
+        if (GameWorld.CampaignLoaded) hostNow = Kit.Button(hostRow.transform, "Host this game", () => HostNow(), cta: true);
+        else
+        {
+            hostNew = Kit.Button(hostRow.transform, "New game and host", () => HostAfter("New Game"), cta: true);
+            hostLoad = Kit.Button(hostRow.transform, "Load a save and host", () => HostAfter("Load Game"));
+        }
+        var pending = Kit.Row(b, 8, 26);
+        Kit.Size(Kit.Label(pending.transform, "Hosting starts as soon as your game is running.", 15, Paint.Positive), flexWidth: 1);
+        Kit.Button(pending.transform, "Cancel", () => hostWhenLoaded = false, height: 24, size: 14);
         refreshers.Add(() =>
         {
-            status.text = !SteamGate.Enabled ? "Steam is turned off in the mod's settings."
-                : !SteamGate.Ready ? (SteamGate.Error.Length > 0 ? SteamGate.Error : "Starting Steam…")
-                : $"Signed in as <b>{SteamGate.LocalName}</b>. Hosting makes your open game the shared world; Steam friends see it below in their Multiplayer window.";
-            hostSteam.interactable = SteamGate.Ready && runtime.CanHost;
-            retry.gameObject.SetActive(SteamGate.Enabled && !SteamGate.Ready);
-            RefreshFriends();
+            how.text = ViaSteam
+                ? (!SteamGate.Ready ? (SteamGate.Error.Length > 0 ? SteamGate.Error : "Starting Steam…") + " Steam must be running and signed in; or choose IP address."
+                    : $"Signed in to Steam as <b>{Escape(SteamGate.LocalName)}</b>. Your Steam friends see your game under Friends hosting in their Multiplayer window; nobody needs your IP address or an open port.")
+                : $"Players on your network, or on a shared virtual network (Tailscale, ZeroTier, Radmin VPN, Hamachi), join with your address and the port below. Over the internet without one, forward TCP port {plugin.HostPort.Value} on your router to this PC and give out your public IP address.";
+            steamRetryRow?.gameObject.SetActive(SteamGate.Enabled && !SteamGate.Ready);
+            if (hostNow != null) hostNow.interactable = HostReady && runtime.CanHost;
+            if (hostNew != null) hostNew.interactable = HostReady && !hostWhenLoaded;
+            if (hostLoad != null) hostLoad.interactable = HostReady && !hostWhenLoaded;
+            pending.gameObject.SetActive(hostWhenLoaded);
         });
 
-        Section(b, "Direct connection", "info_icon");
-        var hostDirect = Kit.Row(b, height: 53);
-        hostDirect.childAlignment = TextAnchor.LowerLeft;
-        Kit.Input(hostDirect.transform, "Port", plugin.HostPort.Value, 6, v => plugin.HostPort.Value = v.Trim(), width: 90);
-        var hostPort = Kit.Button(hostDirect.transform, "Host on this port", () => runtime.Host(plugin.HostPort.Value, Name));
-        var joinRow = Kit.Row(b, height: 53);
+        // Join: friends on Steam, or any address.
+        Section(b, "Join a game", "browser");
+        if (SteamGate.Enabled)
+        {
+            Kit.Label(b, "Friends hosting on Steam", 15);
+            friendsList = Kit.Scroll(b, 76);
+            refreshers.Add(RefreshFriends);
+        }
+        var joinRow = Kit.Row(b, 8, 53);
         joinRow.childAlignment = TextAnchor.LowerLeft;
-        var address = Kit.Input(joinRow.transform, "Address (ip:port or steam:<id>)", plugin.JoinAddress.Value, 64, v => plugin.JoinAddress.Value = v.Trim(), "192.168.1.10:27960");
+        var address = Kit.Input(joinRow.transform, "Or join by address (ip:port, or steam:<id>)", plugin.JoinAddress.Value, 64, v => plugin.JoinAddress.Value = v.Trim(), "192.168.1.10:27960");
         Kit.Size(address.transform.parent.GetComponent<LayoutElement>() ?? address.transform.parent.gameObject.AddComponent<LayoutElement>(), flexWidth: 1);
         Kit.Button(joinRow.transform, "Join", () => runtime.Join(plugin.JoinAddress.Value, Name), cta: true, width: 80);
-        var note = Kit.Label(b, "", 14, Paint.TextLow, wrap: true);
-        refreshers.Add(() =>
-        {
-            hostPort.interactable = runtime.CanHost;
-            note.text = GameWorld.CampaignLoaded
-                ? "Hosting shares the game you have open. Joining replaces it with the host's world; new players found their company on the game setup screen under the host's difficulty."
-                : "Start or load a game to host it. Joining opens the host's world; new players found their company on the game setup screen under the host's difficulty.";
-        });
+        Kit.Label(b, "The first time you join a session you found your company on the game's New Game screen, under the host's difficulty.", 14, Paint.TextLow, wrap: true);
 
+        // Continue: host a saved session again through the connection chosen above.
         var saved = runtime.Resumable();
         if (saved.Count > 0)
         {
-            Section(b, "Saved sessions", "load");
-            Kit.Label(b, "Host a saved session again; its players rejoin their own companies.", 14, Paint.TextLow, wrap: true);
+            Section(b, "Continue a saved session", "load");
+            Kit.Label(b, "Host a session you played again; its players rejoin their own companies. Uses the connection chosen above.", 14, Paint.TextLow, wrap: true);
             foreach (var entry in saved.Take(3))
             {
                 var row = Kit.Row(b, 6, 28);
                 var text = Kit.Label(row.transform, $"{entry.sessionId}  <color=#{ColorUtility.ToHtmlStringRGB(Look.Of(Paint.TextLow))}>{entry.written.ToString("d MMM HH:mm", System.Globalization.CultureInfo.InvariantCulture)}</color>", 15);
                 Kit.Size(text, flexWidth: 1);
                 string id = entry.sessionId;
-                if (SteamGate.Ready)
-                {
-                    var steam = Kit.Button(row.transform, "On Steam", () => runtime.Resume(id, SteamGate.AddressPrefix, Name), height: 26, size: 15);
-                    Kit.Tooltip(steam.gameObject, "Resume on Steam", "Host this session again; Steam friends can join it.");
-                }
-                var port = Kit.Button(row.transform, "On port", () => runtime.Resume(id, plugin.HostPort.Value, Name), height: 26, size: 15);
-                Kit.Tooltip(port.gameObject, "Resume on port", $"Host this session again on port {plugin.HostPort.Value}.");
+                var resume = Kit.Button(row.transform, "Continue", () => runtime.Resume(id, HostAddress, Name), height: 26, size: 15);
+                refreshers.Add(() => resume.interactable = HostReady && runtime.Session == null && !runtime.Busy);
             }
         }
+    }
+
+    private void SetVia(string via)
+    {
+        if (string.Equals(plugin.HostVia.Value, via, StringComparison.OrdinalIgnoreCase)) return;
+        plugin.HostVia.Value = via;
+        mode = "";   // rebuild the lobby for the other connection
+    }
+
+    private void HostNow()
+    {
+        if (ViaSteam && !SteamGate.TryInit(force: true)) return;
+        runtime.Host(HostAddress, Name);
+    }
+
+    private void HostAfter(string menuButton)
+    {
+        if (!Surface.InMenu || !PressMenu(menuButton)) { runtime.Log("MP: open the main menu to start or load a game to host"); return; }
+        hostWhenLoaded = true;
+        Window.Close();
     }
 
     private void RefreshFriends()
@@ -159,7 +227,7 @@ internal sealed class MainWindow
         Kit.Clear(friendsList);
         if (friends.Count == 0)
         {
-            Kit.Label(friendsList, SteamGate.Ready ? "No friends are hosting right now." : "Steam is not ready.", 15, Paint.TextLow);
+            Kit.Label(friendsList, SteamGate.Ready ? "No friends are hosting right now." : "Start Steam to see friends' games.", 15, Paint.TextLow);
             return;
         }
         foreach (var f in friends)
@@ -338,7 +406,7 @@ internal sealed class MainWindow
 
     private string DateOf(int day) => day < 0 ? "not yet" : new DateTime(1970, 1, 1).AddDays(day).ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
-    private string InviteText() => runtime.OnSteam ? (SteamGate.LobbyOpen ? "Steam friends see this session in their Multiplayer window" : "opening the Steam lobby…") : InviteAddress();
+    private string InviteText() => runtime.OnSteam ? (SteamGate.LobbyOpen ? "shown to your Steam friends" : "opening the Steam lobby…") : InviteAddress();
 
     private string InviteAddress()
     {
@@ -351,7 +419,7 @@ internal sealed class MainWindow
         try
         {
             var list = System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName())
-                .Where(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !System.Net.IPAddress.IsLoopback(a))
+                .Where(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !System.Net.IPAddress.IsLoopback(a) && !a.ToString().StartsWith("169.254.", StringComparison.Ordinal))
                 .Select(a => a.ToString()).ToList();
             return list.Count > 0 ? list : new List<string> { "127.0.0.1" };
         }
@@ -380,21 +448,16 @@ internal sealed class MainWindow
         return row;
     }
 
+    // Same pattern as the Agent mod's window: version link (About) on the left, actions and Close on the right.
     private void BuildFooter(bool inSession)
     {
         footer = Window.Footer();
-        var version = Kit.Button(footer.transform, ModInfo.Short, openCredits, height: 26, size: 14);
-        Kit.Tooltip(version.gameObject, "About this mod", "Version, credits, license and the project page.");
-        var image = version.GetComponent<Image>();
-        Painted.Set(image, Paint.Clear);
-        var outline = version.GetComponent<Outline>();
-        if (outline != null) { UnityEngine.Object.Destroy(version.GetComponent<LightOnly>()); outline.enabled = false; }
-        Painted.Set(version.GetComponentInChildren<TextMeshProUGUI>(), Paint.TextLow);
+        Kit.VersionLink(footer.transform, ModInfo.Short, openCredits);
         var spacer = Kit.Rect("Spacer", footer.transform);
         Kit.Size(spacer, flexWidth: 1);
         Kit.Button(footer.transform, "Diagnostics", () =>
         {
-            try { runtime.Log("MP: diagnostics saved to " + Diagnostics.DiagnosticsBundle.Create()); }
+            try { showDiagnostics(Diagnostics.DiagnosticsBundle.Create()); }
             catch (Exception e) { runtime.Log("MP: could not save diagnostics: " + e.Message); }
         }, height: 28, size: 15);
         if (inSession) Kit.Button(footer.transform, "Leave session", runtime.Leave, height: 28, size: 15);

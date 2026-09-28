@@ -11,6 +11,10 @@ Protocol 6: every player needs this version.
 - **Bankruptcy:** a bankrupt player's company is frozen (projects cancelled, products retired, research stopped) and the player stays to watch, or leaves; a bankrupt host no longer ends the session.
 - **Business proposals** between players show every term (capacity, price, term, renewal, fines).
 - **Credits and version:** the version and release name sit in the window's footer; click them for credits, license and the project page.
+- **Clearer hosting:** the Multiplayer window is organised as Host a game / Join a game / Continue a saved session. Choose **Steam** or **IP address** under Connect through; each explains what the other players need (the IP option lists your addresses and the port). From the main menu, **New game and host** or **Load a save and host** opens the game's own screen and hosts as soon as the game runs.
+- **One pattern with the Agent mod:** the bottom-bar item (shown during a game; the main menu has its own entry) opens the window above it; buttons press like the game's; the footer's version link opens About; no tooltips on the bottom bar.
+- **Diagnostics** now says where the report was saved and opens its folder.
+- Your multiplayer name defaults to your Steam name (or "Player"), never your Windows user name.
 - **For other mods:** `MpApi.LocalBankrupt` and `Status()["bankrupt"]` report a bankrupt local company (the Agent mod 0.5.0 uses it).
 - Released under the MIT license (LICENSE.txt in the plugin folder). The lobby layout was polished (compact port field, short Resume buttons).
 - **Fix (D54):** closing the game's Default warning or "Select New Research" on the host paused the session for everyone.
