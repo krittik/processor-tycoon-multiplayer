@@ -15,12 +15,16 @@ internal sealed class Dialogs
     private Window? credits, deal, bankrupt;
     private BusinessDeals.Proposal? shownDeal;
     private bool bankruptPending;
+    private int creditsRevision;
 
     public Dialogs(MpRuntime runtime) => this.runtime = runtime;
 
     public void ShowCredits()
     {
+        // Some texts carry theme colours inline (notes, links): rebuild after a theme change.
+        if (credits != null && creditsRevision != Look.Revision) { credits.Destroy(); credits = null; }
         credits ??= BuildCredits();
+        creditsRevision = Look.Revision;
         credits.Show(Vector2.zero);
     }
 
@@ -62,6 +66,7 @@ internal sealed class Dialogs
         Kit.Size(names, flexWidth: 1);
         Kit.Label(names.transform, "<b>" + ModInfo.Name + "</b>", 18);
         Kit.Label(names.transform, $"Version {ModInfo.Version}  “{ModInfo.Release}”  ·  {ModInfo.License} License", 15, Paint.TextLow);
+        Kit.Label(b, "Up to 8 players, each leading their own company, in one shared world over Steam or the network.", 15, wrap: true);
         Kit.Header(b, "Credits");
         var cta = ColorUtility.ToHtmlStringRGB(Look.Of(Paint.Cta));
         Kit.Links(Kit.Label(b, ModInfo.Byline((name, url) => $"<link=\"{url}\"><u><color=#{cta}>{name}</color></u></link>"), 16, wrap: true));
