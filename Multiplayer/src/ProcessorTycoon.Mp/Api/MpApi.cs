@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ProcessorTycoonMp.Core.Session;
+using UnityEngine;
 
 namespace ProcessorTycoonMp.Api;
 
@@ -62,7 +63,18 @@ public static class MpApi
 
     // Session control, same as the F9 window. Results are asynchronous: poll State / LastError / Status().
     public static void Host(string address, string playerName) => Runtime?.Host(address, playerName);
-    public static void Join(string address, string playerName) => Runtime?.Join(address, playerName);
+    // In a game without a window (-batchmode) nobody can fill in the company setup screen: the company is set up at once
+    // with the player's name, as a CPU company.
+    public static void Join(string address, string playerName)
+    {
+        if (Application.isBatchMode) JoinAs(address, playerName, playerName, 0);
+        else Runtime?.Join(address, playerName);
+    }
+
+    // Joins with the company set up at once instead of on the setup screen: companyType 0 CPU, 1 CPU fabless, 2 foundry;
+    // funds, factory and technology as a new game started now (D58).
+    public static void JoinAs(string address, string playerName, string companyName, int companyType) =>
+        Runtime?.Join(address, playerName, rules => UI.JoinSetup.Auto(rules, companyName.Length > 0 ? companyName : playerName, playerName, companyType));
     public static void Resume(string sessionId, string address, string playerName) => Runtime?.Resume(sessionId, address, playerName);
     public static void Leave() => Runtime?.Leave();
 
@@ -87,6 +99,8 @@ public static class MpApi
             ["waitingFor"] = s is HostSession hw ? hw.WaitingFor : "",
             ["resumable"] = string.Join(", ", Runtime?.Resumable().Select(r => r.sessionId) ?? Enumerable.Empty<string>()),
             ["chatLast"] = ChatLast,
+            // Where a game copy on this PC joins this host's session (D64).
+            ["localAddress"] = Runtime?.LocalAddress ?? "",
             ["error"] = LastError,
         };
         if (s is PeerSession p) { result["hostSpeed"] = p.HostSpeed; result["lastCheckpointResult"] = p.LastCheckpointResult; }

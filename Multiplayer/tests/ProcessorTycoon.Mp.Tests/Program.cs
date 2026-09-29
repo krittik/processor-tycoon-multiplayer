@@ -100,6 +100,22 @@ Check("plugin guid is fixed", MpProtocol.PluginGuid == "processortycoon.multipla
     Check("lag window keeps checkpoints", host.Resyncs == 0 && hw.Checkpoints.Count >= 10 && pw.Checkpoints.Count >= 10, $"{host.Resyncs} {hw.Checkpoints.Count} {pw.Checkpoints.Count}");
 }
 
+// --- D64: a Steam host also takes players on this PC through a second (loopback) transport ---
+{
+    var mainHub = new LoopbackHub();
+    var localHub = new LoopbackHub();
+    var hw = new FakeWorld(isHost: true) { Speed = 0 };
+    var dual = new DualTransport(new LoopbackTransport(mainHub), () => new LoopbackTransport(localHub), new[] { "local" });
+    var host = new HostSession(dual, hw, "Host");
+    host.Start("main", 0);
+    var remote = new PeerSession(new LoopbackTransport(mainHub), new FakeWorld(isHost: false), "Friend", "friend") { AutoCompany = Auto };
+    var companion = new PeerSession(new LoopbackTransport(localHub), new FakeWorld(isHost: false), "Agent", "agent") { AutoCompany = Auto };
+    remote.Connect("main");
+    companion.Connect("local");
+    for (int frame = 0; frame < 60; frame++) { host.Update(1f); remote.Update(1f); companion.Update(1f); }
+    Check("dual transport joins players on both", dual.LocalAddress == "local" && remote.State == SessionState.Running && companion.State == SessionState.Running && host.Players.Count(p => p.Connected) == 3, $"{remote.State} {companion.State} {host.Players.Count(p => p.Connected)}");
+}
+
 // --- Keepalive: a silent peer is dropped after the timeout and its company goes offline ---
 {
     var hub = new LoopbackHub();

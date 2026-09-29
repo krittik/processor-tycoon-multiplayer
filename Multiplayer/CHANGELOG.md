@@ -17,8 +17,10 @@ Protocol 7: every player needs this version.
 - **One pattern with the Agent mod:** the bottom-bar item (shown during a game; the main menu has its own entry) opens the window above it; a status line comes first, explanations sit in tooltips, a choice is a strip like the game's tabs, at most one blue button per section; the title bar's × closes a window; buttons press like the game's; the footer's version link opens About; no tooltips on the bottom bar.
 - Your multiplayer name defaults to your Steam name (or "Player"), never your Windows user name.
 - Built on the new [Processor Tycoon Mod API](https://github.com/krittik/processor-tycoon-mod-api) (compiled in; nothing extra to install), shared with the Agent mod.
-- **For other mods:** `MpApi.LocalBankrupt` and `Status()["bankrupt"]` report a bankrupt local company; `MpApi.ChatSince(n)` and `ChatLast` (also `Status()["chatLast"]`) read the chat, public and private lines, numbered. The Agent mod 0.5.0 uses both.
+- **Play with AI agents:** with the Agent mod, an agent can join the game you host as its own player, from its own copy of the game on your PC (`pt-agent companion start`, D64); several agents can join. Hosting on Steam also accepts players from this PC.
+- **For other mods:** `MpApi.JoinAs` joins with the company set up at once; `Status()["localAddress"]` is where a game on this PC joins your session; `MpApi.LocalBankrupt` and `Status()["bankrupt"]` report a bankrupt local company; `MpApi.ChatSince(n)` and `ChatLast` (also `Status()["chatLast"]`) read the chat, public and private lines, numbered. The Agent mod 0.5.0 uses them.
 - Released under the MIT license (LICENSE.txt in the plugin folder). The lobby layout was polished (compact port field, short Resume buttons).
+- **Fix:** the contract window's note for a player counterparty ("… decides by email") no longer runs into the Sign button.
 - **Fix (D54):** closing the game's Default warning or "Select New Research" on the host paused the session for everyone.
 - **Fix (D54):** on the host, every joined player's company shared the host company's "divisions"; a player selling their factory division changed the host's company and forced a resync of all players.
 - **Fix (D56):** a resync no longer undoes a player's own last changes (for example production lines set just before it).

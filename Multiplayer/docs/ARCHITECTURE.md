@@ -144,7 +144,7 @@ Initial rule: each owner is authoritative for its own sales, computed by the nat
 
 ## Interop API (D14)
 
-`ProcessorTycoonMp.Api` (static, in the plugin assembly): `IsActive`, `IsHost`, `LocalSlot`, `Players`, `CanControlTime`, `RequestPause(bool)`, `RequestSpeed(int)`, `SendChat(string)`, `event OnChat`, `ChatLast` / `ChatSince(n)` (numbered chat lines, public and private), `RegisterChannel(name, handler)` / `Send(channel, bytes)` for other mods to replicate their own data. Other mods declare a *soft* dependency on GUID `processortycoon.multiplayer`. The Agent mod uses it to refuse or redirect its time commands during a session and to pass chat to the agent.
+`ProcessorTycoonMp.Api` (static, in the plugin assembly): `IsActive`, `IsHost`, `LocalSlot`, `Players`, `CanControlTime`, `RequestPause(bool)`, `RequestSpeed(int)`, `SendChat(string)`, `event OnChat`, `ChatLast` / `ChatSince(n)` (numbered chat lines, public and private), `JoinAs(address, name, company, type)` and `Status()["localAddress"]` (D64), `RegisterChannel(name, handler)` / `Send(channel, bytes)` for other mods to replicate their own data. Other mods declare a *soft* dependency on GUID `processortycoon.multiplayer`. The Agent mod uses it to refuse or redirect its time commands during a session and to pass chat to the agent.
 
 ## Compatibility (D18, D21)
 

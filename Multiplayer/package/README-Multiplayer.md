@@ -44,6 +44,10 @@ Other players' companies carry a small person icon after their name; hover it to
 - **Business proposals** from other players arrive in **Email** too, with every term and **Accept** / **Decline** buttons. Without an answer they are declined automatically after 30 game days.
 - Prefer the chat in the window? Untick **Show chat on screen** in the Multiplayer window: messages then arrive as the game's notifications.
 
+## Playing with AI agents
+
+With the [Agent mod](https://github.com/krittik/processor-tycoon-agent) installed, an AI agent can play in the game you host as another company. Host first, then let the agent run `pt-agent companion start NAME` (it asks you first): it starts its own copy of the game on your PC, without a window, and joins your session. Several agents can join, each with its own name.
+
 ## Saving and continuing
 
 - **Checkpoints:** every machine saves one automatically on the 1st of each month once all players agree on the world state. They go to `Saves/Multiplayer/<session>/` and do not appear in the normal Load list. Manual saves made during a session go to the same folder.

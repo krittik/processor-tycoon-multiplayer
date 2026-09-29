@@ -56,6 +56,13 @@ internal sealed class MpRuntime
     public bool OnSteam { get; private set; }
     public ITransport? Transport { get; private set; }
     private float nextRouteCheck;
+    private ITransport? hosted;
+    private string hostedAddress = "";
+
+    // Where a game copy on this PC (an agent's companion) joins the session this game hosts (D64); "" when not hosting.
+    public string LocalAddress => Session is not HostSession || hosted == null ? ""
+        : hosted is DualTransport dual ? dual.LocalAddress
+        : "127.0.0.1:" + TcpTransport.Parse(hostedAddress, "0.0.0.0").port;
     private string lastRoutes = "";
 
     public bool CanHost => Session == null && !Busy && GameWorld.CampaignLoaded;
@@ -68,7 +75,7 @@ internal sealed class MpRuntime
         if (!GameWorld.CampaignLoaded) { Fail("Start or load a game first; the host's game becomes the shared world."); return; }
         try
         {
-            var transport = CreateTransport(address);
+            var transport = CreateTransport(address, host: true);
             Begin(isHost: true);
             var host = new HostSession(transport, World, playerName, clientId) { CaretakerDays = CaretakerDays };
             SaveIO.SessionId = host.SessionId;
@@ -103,7 +110,7 @@ internal sealed class MpRuntime
                     IdRanges.RestoreHostCounter();
                     EntityIO.ClearCaches();
                     Muting.Clear();
-                    var host = new HostSession(CreateTransport(address), World, playerName, clientId, SessionRecord.Parse(saved.record)) { CaretakerDays = CaretakerDays };
+                    var host = new HostSession(CreateTransport(address, host: true), World, playerName, clientId, SessionRecord.Parse(saved.record)) { CaretakerDays = CaretakerDays };
                     Attach(host);
                     host.Start(string.IsNullOrWhiteSpace(address) ? TcpTransport.DefaultPort.ToString() : address, Player.Instance.Company.SaveID);
                     OpenLobby(host);
@@ -256,12 +263,16 @@ internal sealed class MpRuntime
     }
 
     // "steam" / "steam:<id>" addresses use Steam (D50), anything else TCP.
-    private ITransport CreateTransport(string address)
+    // A Steam host also listens on loopback TCP, so game copies on this PC can join (D64); Transport stays the Steam one
+    // for its route diagnostics.
+    private ITransport CreateTransport(string address, bool host = false)
     {
         OnSteam = SteamGate.IsSteamAddress(address);
         Transport = OnSteam ? SteamGate.CreateTransport() : new TcpTransport();
         lastRoutes = "";
-        return Transport;
+        hostedAddress = address;
+        hosted = !host ? null : OnSteam ? new DualTransport(Transport, () => new TcpTransport(), Enumerable.Range(TcpTransport.DefaultPort, 10).Select(p => "127.0.0.1:" + p).ToList()) : Transport;
+        return hosted ?? Transport;
     }
 
     private void OpenLobby(HostSession host)

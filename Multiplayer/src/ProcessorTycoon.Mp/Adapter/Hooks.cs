@@ -177,7 +177,11 @@ internal static class Hooks
         var other = __instance.currentClient.IsPlayer ? __instance.currentProvider : __instance.currentClient;
         if (!Ownership.IsGhost(other)) return;
         __instance.acceptanceScore = 1;
-        if (__instance.acceptanceText != null) __instance.acceptanceText.text = $"{other.Name} is a player: signing sends a proposal they accept or decline";
+        // One short line: the label sits right above the Sign button (the proposal arrives as an email, BusinessDeals).
+        var label = __instance.acceptanceText;
+        if (label == null) return;
+        var text = $"{other.Name} decides by email";
+        label.text = label.GetPreferredValues(text).x <= label.rectTransform.rect.width ? text : "Player decides by email";
     }
 
     [HarmonyPatch(typeof(BusinessContractManager), nameof(BusinessContractManager.AddContract)), HarmonyPostfix]
