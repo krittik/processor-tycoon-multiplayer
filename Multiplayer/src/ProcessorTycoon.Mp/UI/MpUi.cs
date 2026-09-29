@@ -45,6 +45,7 @@ internal sealed class MpUi
     public void Show(bool visible) { if (!visible) main.Window.Close(); else if (!main.Window.Visible) Toggle(); }
     public void ShowCredits() => dialogs.ShowCredits();
     public void WriteChat(string text) => chat.Write(text);
+    public void ScrollChat(int lines) => chat.Scroll(lines);
     public void CloseAll() { main.Window.Close(); dialogs.CloseAll(); }
 
     public void Update()

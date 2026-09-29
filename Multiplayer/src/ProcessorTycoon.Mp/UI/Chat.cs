@@ -11,8 +11,9 @@ using UnityEngine;
 
 namespace ProcessorTycoonMp.UI;
 
-// Chat during a session (D62). Lines appear at the bottom left like the Agent mod's feed (Mod API Feed): they fade out,
-// hovering them shows the history, the mouse wheel scrolls back, Enter writes. "@Name text" is private: only that player
+// Chat during a session (D62). Lines appear at the bottom left like the Agent mod's feed (Mod API Feed), above an input
+// line that stays on screen: they fade out, hovering the chat shows the history, the mouse wheel scrolls back, Enter or a
+// click on the input line writes. "@Name text" is private: only that player
 // gets it, as a conversation in their Email (its Reply button opens the chat with "@Name "). With the overlay off (config
 // Chat.Overlay or the Multiplayer window), messages arrive as the game's notifications and the window holds the chat.
 internal sealed class Chat
@@ -23,7 +24,6 @@ internal sealed class Chat
     private readonly Feed feed;
     private readonly Dictionary<int, List<string>> threads = new();
     private SessionBase? session;
-    private bool hinted;
 
     // The Multiplayer window's chat input, used while the overlay is off.
     public Action<string>? WriteInWindow;
@@ -32,8 +32,12 @@ internal sealed class Chat
     {
         this.runtime = runtime;
         this.plugin = plugin;
-        // Right of the desktop icons, above the bottom bar.
-        feed = new Feed(Surface.Get(), rightSide: false, placeholder: "Message everyone, or @name for a private email") { Side = 128, Bottom = 46, MaxWidth = 560, EnterOpens = true };
+        // At the left edge above the bottom bar; four idle lines stay below the desktop icons.
+        feed = new Feed(Surface.Get(), rightSide: false, placeholder: "Message everyone, or @name for a private email")
+        {
+            Side = 12, Bottom = 46, MaxWidth = 560, IdleLines = 4, EnterOpens = true, InputAlwaysVisible = true,
+            IdleHint = "Press Enter to chat · @name for a private email",
+        };
         feed.Submitted += runtime.SendChat;
         runtime.ChatLine += OnLine;
     }
@@ -43,10 +47,8 @@ internal sealed class Chat
     public void Tick()
     {
         var s = runtime.Session;
-        if (s != session) { session = s; feed.Clear(); threads.Clear(); hinted = false; }
+        if (s != session) { session = s; feed.Clear(); threads.Clear(); }
         feed.Enabled = Overlay && s?.State == SessionState.Running && GameWorld.CampaignLoaded;
-        // Once per session, so nobody has to find the chat in a tooltip; it fades like any line.
-        if (feed.Enabled && !hinted) { hinted = true; feed.Add("<color=#9DA3AA><i>Press Enter to chat · start with @name for a private email</i></color>"); }
         feed.Tick();
     }
 
@@ -56,6 +58,8 @@ internal sealed class Chat
         if (Overlay) feed.OpenInput(prefill);
         else WriteInWindow?.Invoke(prefill);
     }
+
+    public void Scroll(int lines) => feed.ScrollBy(lines);
 
     private void OnLine(ChatLine line)
     {

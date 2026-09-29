@@ -62,7 +62,7 @@ public sealed class Plugin : BaseUnityPlugin
         ProcessorTycoonModApi.Game.Mail.Owner = MpProtocol.PluginGuid;
         runtime.CaretakerDays = System.Math.Max(1, caretakerDays.Value);
         if (!Application.isBatchMode) ui = new MpUi(runtime, this);
-        dev = new DevControl(runtime, Paths.GameRootPath) { ShowPanel = visible => ui?.Show(visible), ShowCredits = () => ui?.ShowCredits(), CloseUi = () => ui?.CloseAll(), WriteChat = text => ui?.WriteChat(text) };
+        dev = new DevControl(runtime, Paths.GameRootPath) { ShowPanel = visible => ui?.Show(visible), ShowCredits = () => ui?.ShowCredits(), CloseUi = () => ui?.CloseAll(), WriteChat = text => ui?.WriteChat(text), ScrollChat = lines => ui?.ScrollChat(lines) };
         SteamGate.Enabled = steamEnabled.Value;
         if (steamForceRelay.Value) SteamGate.SetForceRelay(true);
         SteamGate.Log += runtime.Log;

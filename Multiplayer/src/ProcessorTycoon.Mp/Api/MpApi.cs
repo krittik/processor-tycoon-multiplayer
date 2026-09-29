@@ -31,6 +31,22 @@ public static class MpApi
 
     public static void SendChat(string text) => Runtime?.SendChat(text);
 
+    // The number of the latest chat line (0: none yet). Numbers keep growing across sessions.
+    public static int ChatLast => Runtime?.ChatLast ?? 0;
+
+    // The session's chat lines numbered above `since` (at most the last 100), oldest first: seq, from and to (player names;
+    // from "" is a note from this mod, such as an unknown @name, to "" means everyone), text, private, mine.
+    public static IList<IDictionary<string, object>> ChatSince(int since)
+    {
+        var s = Runtime?.Session;
+        if (s == null) return new List<IDictionary<string, object>>();
+        string Name(int slot) => slot < 0 ? "" : s.Players.FirstOrDefault(p => p.Slot == slot)?.Name ?? "?";
+        return Runtime!.ChatLines.Where(l => l.Seq > since).Select(l => (IDictionary<string, object>)new Dictionary<string, object>
+        {
+            ["seq"] = l.Seq, ["from"] = l.From < 0 ? "" : l.Name, ["to"] = Name(l.To), ["text"] = l.Text, ["private"] = l.Private, ["mine"] = l.From == s.LocalSlot,
+        }).ToList();
+    }
+
     // Mod data channels: handlers receive (sender slot, bytes) for their channel name; Send reaches every other player.
     private static readonly Dictionary<string, Action<int, byte[]>> channels = new();
 
@@ -70,6 +86,7 @@ public static class MpApi
             ["waitingForPlayers"] = s is HostSession h && h.WaitingForPeers,
             ["waitingFor"] = s is HostSession hw ? hw.WaitingFor : "",
             ["resumable"] = string.Join(", ", Runtime?.Resumable().Select(r => r.sessionId) ?? Enumerable.Empty<string>()),
+            ["chatLast"] = ChatLast,
             ["error"] = LastError,
         };
         if (s is PeerSession p) { result["hostSpeed"] = p.HostSpeed; result["lastCheckpointResult"] = p.LastCheckpointResult; }

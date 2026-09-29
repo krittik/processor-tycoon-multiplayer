@@ -26,6 +26,7 @@ internal sealed class MpRuntime
     private readonly string clientId;
     private readonly List<string> recent = new();
     private readonly List<ChatLine> chat = new();
+    private int chatSeq;
     private SessionBase? reportedSession;
 
     public MpRuntime(ManualLogSource logger, string modVersion, string clientId)
@@ -41,6 +42,8 @@ internal sealed class MpRuntime
     public IReadOnlyList<string> Recent => recent;
     // Chat of the running session, public and private lines (at most 100).
     public IReadOnlyList<ChatLine> ChatLines => chat;
+    // The number of the latest chat line; numbers keep growing across sessions (MpApi.ChatSince).
+    public int ChatLast => chatSeq;
     // Public messages (sender slot, text), for other mods (MpApi.Chat).
     public event Action<int, string>? Chat;
     // Every line, public, private or from the mod itself (unknown @name).
@@ -159,6 +162,7 @@ internal sealed class MpRuntime
 
     private void AddChat(ChatLine line)
     {
+        line.Seq = ++chatSeq;
         chat.Add(line);
         if (chat.Count > 100) chat.RemoveAt(0);
         ChatLine?.Invoke(line);
@@ -300,7 +304,7 @@ internal sealed class MpRuntime
 // −1 for everyone.
 internal sealed class ChatLine
 {
-    public int From, To = -1;
+    public int Seq, From, To = -1;
     public string Name = "", Text = "";
     public bool Private => To >= 0;
 }

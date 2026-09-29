@@ -32,6 +32,7 @@ internal sealed class DevControl
     public Action? ShowCredits;
     public Action? CloseUi;
     public Action<string>? WriteChat;
+    public Action<int>? ScrollChat;
 
     public void Update(string defaultName)
     {
@@ -95,6 +96,7 @@ internal sealed class DevControl
                 case "deal": if (Adapter.BusinessDeals.Pending.Count > 0) Adapter.BusinessDeals.Answer(Adapter.BusinessDeals.Pending[0], Arg(1, "") == "accept"); break;
                 case "chat": runtime.SendChat(line.Substring(4)); break;
                 case "write": WriteChat?.Invoke(line.Length > 6 ? line.Substring(6) : ""); break;
+                case "chat-scroll": ScrollChat?.Invoke(int.Parse(Arg(1, "0"), CultureInfo.InvariantCulture)); break;
                 case "speed": DateController.Instance.ManualSetTimeSpeed(int.Parse(Arg(1, "1"), CultureInfo.InvariantCulture), playsound: false); break;
                 case "load": SaveHandler.Instance.Load(line.Substring(5).Trim()); break;
                 case "diagnostics": runtime.Log("MP dev: diagnostics saved to " + DiagnosticsBundle.Create()); break;
