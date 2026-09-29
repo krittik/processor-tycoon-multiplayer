@@ -12,8 +12,8 @@ using UnityEngine;
 namespace ProcessorTycoonMp.UI;
 
 // Chat during a session (D62). Lines appear at the bottom left like the Agent mod's feed (Mod API Feed), above an input
-// line that stays on screen: they fade out, hovering the chat shows the history, the mouse wheel scrolls back, Enter or a
-// click on the input line writes. "@Name text" is private: only that player
+// line that stays on screen: they fade out; hovering the input line (or typing) shows the history, the mouse wheel scrolls
+// back; Enter or a click on the input line writes. Hidden while the Pause Menu is open. "@Name text" is private: only that player
 // gets it, as a conversation in their Email (its Reply button opens the chat with "@Name "). With the overlay off (config
 // Chat.Overlay or the Multiplayer window), messages arrive as the game's notifications and the window holds the chat.
 internal sealed class Chat
@@ -48,7 +48,8 @@ internal sealed class Chat
     {
         var s = runtime.Session;
         if (s != session) { session = s; feed.Clear(); threads.Clear(); }
-        feed.Enabled = Overlay && s?.State == SessionState.Running && GameWorld.CampaignLoaded;
+        // The Pause Menu slides over the bottom left; the chat steps aside until it closes.
+        feed.Enabled = Overlay && s?.State == SessionState.Running && GameWorld.CampaignLoaded && !GameScreen.PauseMenuOpen;
         feed.Tick();
     }
 
