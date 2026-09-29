@@ -102,10 +102,18 @@ public sealed class HostSession : SessionBase
 
     public override void SendChannel(string name, byte[] data) => Broadcast(new Channel { Name = name, Slot = 0, Data = data });
 
-    public override void SendChat(string text)
+    public override void SendChat(string text, int to = -1)
     {
-        RaiseChat(0, text);
-        Broadcast(new Chat { Slot = 0, Text = text });
+        if (to == 0) return;
+        RaiseChat(0, text, to);
+        if (to < 0) Broadcast(new Chat { Slot = 0, Text = text });
+        else Relay(new Chat { Slot = 0, Text = text, To = to });
+    }
+
+    private void Relay(Chat chat)
+    {
+        var target = peers.Values.FirstOrDefault(x => x.Slot == chat.To);
+        if (target != null) Send(target.Connection, chat);
     }
 
     public override void Leave(string reason)
@@ -175,8 +183,9 @@ public sealed class HostSession : SessionBase
                 foreach (var other in peers.Values.Where(x => x != p && x.Slot >= 0)) Send(other.Connection, new Channel { Name = channel.Name, Slot = p.Slot, Data = channel.Data });
                 break;
             case Chat chat:
-                RaiseChat(p.Slot, chat.Text);
-                Broadcast(new Chat { Slot = p.Slot, Text = chat.Text });
+                if (chat.To < 0) { RaiseChat(p.Slot, chat.Text, -1); Broadcast(new Chat { Slot = p.Slot, Text = chat.Text }); }
+                else if (chat.To == 0) RaiseChat(p.Slot, chat.Text, 0);
+                else if (chat.To != p.Slot) Relay(new Chat { Slot = p.Slot, Text = chat.Text, To = chat.To });
                 break;
             case Leave leave:
                 Transport.Disconnect(connection, leave.Reason);

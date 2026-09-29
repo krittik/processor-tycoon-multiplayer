@@ -14,7 +14,7 @@ namespace ProcessorTycoonMp.Diagnostics;
 
 // Scripted control for tests (D14, TESTING): active only when <game>/mp-dev/ exists.
 // Commands in mp-dev/cmd.txt (consumed): host [address] [name] | join address [name] [type 0|1|2] [company name] | resume [sessionId] [address] | kick slot | deal accept|decline | leave | chat text | speed 0..3 |
-// load <save file name> | panel on|off | credits | preview-bankrupt | preview-deal | close-ui | debug-money <cash> | native-pause | uidump <name filter> | quit. Status is written to mp-dev/status.json every second.
+// load <save file name> | panel on|off | credits | write [text] (opens the chat input) | preview-bankrupt | preview-deal | close-ui | debug-money <cash> | native-pause | uidump <name filter> | quit. Status is written to mp-dev/status.json every second.
 internal sealed class DevControl
 {
     private readonly MpRuntime runtime;
@@ -31,6 +31,7 @@ internal sealed class DevControl
     public Action<bool>? ShowPanel;
     public Action? ShowCredits;
     public Action? CloseUi;
+    public Action<string>? WriteChat;
 
     public void Update(string defaultName)
     {
@@ -91,8 +92,9 @@ internal sealed class DevControl
                 case "route": runtime.Log("MP dev: Steam connection details\n" + Steam.SteamGate.DetailedRoutes(runtime.Transport)); break;
                 case "resume": runtime.Resume(Arg(1, ""), Arg(2, ""), defaultName); break;
                 case "kick": if (runtime.Session is HostSession host) host.Kick(int.Parse(Arg(1, "-1")), "kicked by the host"); break;
-                case "deal": if (Adapter.BusinessDeals.Incoming.Count > 0) Adapter.BusinessDeals.Answer(Adapter.BusinessDeals.Incoming[0], Arg(1, "") == "accept"); break;
+                case "deal": if (Adapter.BusinessDeals.Pending.Count > 0) Adapter.BusinessDeals.Answer(Adapter.BusinessDeals.Pending[0], Arg(1, "") == "accept"); break;
                 case "chat": runtime.SendChat(line.Substring(4)); break;
+                case "write": WriteChat?.Invoke(line.Length > 6 ? line.Substring(6) : ""); break;
                 case "speed": DateController.Instance.ManualSetTimeSpeed(int.Parse(Arg(1, "1"), CultureInfo.InvariantCulture), playsound: false); break;
                 case "load": SaveHandler.Instance.Load(line.Substring(5).Trim()); break;
                 case "diagnostics": runtime.Log("MP dev: diagnostics saved to " + DiagnosticsBundle.Create()); break;
@@ -141,7 +143,7 @@ internal sealed class DevControl
         Field("appliedKiB", (st.AppliedBytes / 1024).ToString());
         Field("profile", "{" + string.Join(",", EntityIO.Profile.OrderBy(kv => kv.Key).Select(kv => Json.Quote(kv.Key) + ":" + kv.Value.ToString("0", CultureInfo.InvariantCulture))) + "}");
         if (EntityIO.SalesOwnerTotal > 0) Field("salesDriftPercent", (100 * EntityIO.SalesAbsDiff / EntityIO.SalesOwnerTotal).ToString("0.0", CultureInfo.InvariantCulture));
-        Field("dealProposals", Adapter.BusinessDeals.Incoming.Count.ToString());
+        Field("dealProposals", Adapter.BusinessDeals.Pending.Count.ToString());
         Field("steam", Steam.SteamGate.Ready
             ? "{\"ready\":true,\"forceRelay\":" + (Steam.SteamGate.ForceRelay ? "true" : "false") + ",\"routes\":[" + string.Join(",", Steam.SteamGate.Routes(runtime.Transport).Select(Json.Quote)) + "],\"id\":" + Json.Quote(Steam.SteamGate.LocalId.ToString()) + ",\"name\":" + Json.Quote(Steam.SteamGate.LocalName) + ",\"lobby\":" + (Steam.SteamGate.LobbyOpen ? "true" : "false")
               + ",\"friendsHosting\":[" + string.Join(",", Steam.SteamGate.FriendsHosting().Select(f => Json.Quote(f.Name + " " + Steam.SteamGate.AddressOf(f.SteamId) + " " + f.Version))) + "]}"

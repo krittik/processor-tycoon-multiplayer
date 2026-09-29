@@ -2,13 +2,13 @@ using System.Collections.Generic;
 using System.Linq;
 using ProcessorTycoon;
 using ProcessorTycoon.TooltipSystem;
+using ProcessorTycoonModApi;
 using ProcessorTycoonMp.Adapter;
 using ProcessorTycoonMp.Core.Protocol;
 using ProcessorTycoonMp.Core.Session;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Paint = ProcessorTycoonMp.UI.Look.Paint;
 
 namespace ProcessorTycoonMp.UI;
 
@@ -41,7 +41,7 @@ internal sealed class PlayerTags
         var alive = new HashSet<TMP_Text>();
         foreach (var text in Object.FindObjectsByType<TMP_Text>(FindObjectsSortMode.None))
         {
-            if (!text.isActiveAndEnabled || text.GetComponentInParent<MpUiMarker>() != null || text.GetComponentInParent<TMP_InputField>() != null) continue;
+            if (!text.isActiveAndEnabled || text.canvas == null || text.canvas.rootCanvas.GetComponent(nameof(ModApiOverlay)) != null || text.GetComponentInParent<TMP_InputField>() != null) continue;
             string value = text.text?.Trim() ?? "";
             if (value.Length == 0 || !players.TryGetValue(value, out var player) || text.transform.root.name == "AgentOverlay") continue;
             // Names only: not the big generated logo text of a player company's card.
@@ -64,19 +64,30 @@ internal sealed class PlayerTags
 
     private static Tag Create(TMP_Text text)
     {
-        var rect = Kit.Rect("MpPlayerTag", text.transform);
+        var rect = Ui.Rect("MpPlayerTag", text.transform);
         rect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
         rect.anchorMin = rect.anchorMax = new Vector2(0, .5f);
         rect.pivot = new Vector2(0, .5f);
         rect.sizeDelta = new Vector2(16, 16);
         var image = rect.gameObject.AddComponent<Image>();
-        image.sprite = Look.Sprite("person");
+        image.sprite = Theme.Sprite("person");
         image.preserveAspect = true;
         Painted.Add(image, Paint.Cta);
-        var tip = Kit.Tooltip(rect.gameObject, "Player company", "");
+        var tip = NativeTooltip(rect.gameObject, "Player company");
         var tag = new Tag { Text = text, Rect = rect, Tip = tip };
         Place(tag);
         return tag;
+    }
+
+    // The game's own tooltip (TooltipTrigger with runtime TooltipData): these icons sit on the game's canvases.
+    private static TooltipData NativeTooltip(GameObject target, string header)
+    {
+        var data = ScriptableObject.CreateInstance<TooltipData>();
+        data.Header = header;
+        data.Content = "";
+        data.Delay = .15f;
+        target.AddComponent<TooltipTrigger>().tooltipData = data;
+        return data;
     }
 
     // Right after the rendered name, inside the text's own rectangle when it is too narrow.

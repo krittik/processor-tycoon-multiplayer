@@ -21,7 +21,7 @@ Payloads that carry state (deltas, snapshots) are Deflate-compressed.
 
 ## Messages
 
-Implemented in protocol version 6 (6: roster caretaker fields, company setup handshake D55/D58; 5: entity kind 7 `Projects`, carried: always sent as Upsert, stored by receivers, excluded from drift repair and checkpoint hashes, D52) (`Core/Protocol/Messages.cs`). Envelope: `u8 type`, `i32 seq`, body; strings are .NET `BinaryWriter` strings (7-bit length + UTF-8); delta lists are deflated. TCP frames are prefixed with a 4-byte little-endian length (max 64 MiB); the default port is 27960.
+Implemented in protocol version 7 (7: `Chat` recipient for private messages, D62; 6: roster caretaker fields, company setup handshake D55/D58; 5: entity kind 7 `Projects`, carried: always sent as Upsert, stored by receivers, excluded from drift repair and checkpoint hashes, D52) (`Core/Protocol/Messages.cs`). Envelope: `u8 type`, `i32 seq`, body; strings are .NET `BinaryWriter` strings (7-bit length + UTF-8); delta lists are deflated. TCP frames are prefixed with a 4-byte little-endian length (max 64 MiB); the default port is 27960.
 
 | Type | Dir | Body |
 |---|---|---|
@@ -36,11 +36,11 @@ Implemented in protocol version 6 (6: roster caretaker fields, company setup han
 | `CheckpointResult` (9) | host→peer | day, ok, detail text, differing entity keys (for the desync report) |
 | `ResyncRequest` (10) | peer→host | reason (bundle out of order) |
 | `Roster` (11) | host→all | players: slot, name, company id (−1 while founding), connected, client id, offline-since day (−1 when connected), AI control |
-| `Chat` (12) | any | slot, text (host rebroadcasts) |
+| `Chat` (12) | any | sender slot, text, recipient slot (−1: everyone). The host rebroadcasts public messages; a private one goes only to its recipient (the host relays it and never shows it unless it is the recipient) |
 | `Ping`/`Pong` (13/14) | any | keepalive every 5 s; a connection silent for 45 s is dropped |
 | `Leave` (15) | any | reason |
 | `CompanySetup` (18) | peer→host | company name, founder, colour, company type (0 CPU, 1 fabless, 2 foundry), starting funds (i64), factory lines, starting technology — answers `Welcome.NeedsCompany` (D58) |
-| `Channel` (17) | any | channel name, sender slot, bytes — other mods' data (MpApi.RegisterChannel/Send); the host rebroadcasts |
+| `Channel` (17) | any | channel name, sender slot, bytes — other mods' data (MpApi.RegisterChannel/Send); the host rebroadcasts. This mod's own channels: `mp.deal` (a proposal: the contract's save JSON), `mp.deal-declined`, `mp.deal-expired` (the same JSON back to the proposer) |
 | `Command` (16) | peer→host | kind + args for host-owned shared objects: `contract-offer` / `contract-withdraw` with `contractKey|cpuId` (D43), `architecture-owner` with the architecture id (D44), `business-add` with the deal's save JSON and `business-break` with `dealKey|breakerId` (D45), `business-add-approved` with the deal JSON after the other player accepted (D46); the result replicates through deltas |
 
 Planned, not implemented: `CommandResult`, `PlayerLocal`.

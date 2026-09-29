@@ -47,7 +47,12 @@ public sealed class PeerSession : SessionBase
         Send(0, setup);
     }
 
-    public override void SendChat(string text) => Send(0, new Chat { Slot = LocalSlot, Text = text });
+    public override void SendChat(string text, int to = -1)
+    {
+        if (to == LocalSlot) return;
+        Send(0, new Chat { Slot = LocalSlot, Text = text, To = to });
+        if (to >= 0) RaiseChat(LocalSlot, text, to);   // the host echoes public messages only
+    }
     public override void SendChannel(string name, byte[] data) => Send(0, new Channel { Name = name, Slot = LocalSlot, Data = data });
 
     public override void Leave(string reason)
@@ -128,7 +133,7 @@ public sealed class PeerSession : SessionBase
                 }
                 break;
             case Roster roster: SetPlayers(roster.Players); break;
-            case Chat chat: RaiseChat(chat.Slot, chat.Text); break;
+            case Chat chat: RaiseChat(chat.Slot, chat.Text, chat.To); break;
             case Channel channel: RaiseChannel(channel.Name, channel.Slot, channel.Data); break;
             case Leave leave:
                 CloseReason = "Host left: " + leave.Reason;

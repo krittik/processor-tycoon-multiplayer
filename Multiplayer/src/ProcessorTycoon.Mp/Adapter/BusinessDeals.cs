@@ -6,6 +6,9 @@ using ProcessorTycoon;
 using ProcessorTycoon.CompanySystem;
 using ProcessorTycoon.CompanySystem.Business;
 using ProcessorTycoon.Save;
+using ProcessorTycoon.TimeSystem;
+using ProcessorTycoonModApi;
+using ProcessorTycoonModApi.Game;
 using ProcessorTycoonMp.Core.Delta;
 using UnityEngine;
 
@@ -20,19 +23,24 @@ internal static class BusinessDeals
     private static bool applying;
     private static bool approved;   // adding a deal both players agreed to
 
-    // Deals between two players need the other player's consent: the signer's deal becomes a proposal on this
-    // channel; the other player answers in a prompt; acceptance is recorded by the host like any deal.
+    // Deals between two players need the other player's consent (D62): the signer's deal becomes a proposal on this
+    // channel; the other player gets it by email (Accept / Decline) and a notification; acceptance is recorded by the host
+    // like any deal. Unanswered after AnswerDays game days, it is declined automatically.
     public const string ProposalChannel = "mp.deal";
     public const string DeclineChannel = "mp.deal-declined";
+    public const string ExpiredChannel = "mp.deal-expired";
+    public const int AnswerDays = 30;
 
     public sealed class Proposal
     {
         public int FromSlot;
-        public string Json = "";
-        public string Text = "";
+        public string Json = "", Text = "", From = "", Company = "", Key = "";
+        public DateTime Expires;
     }
 
-    public static readonly List<Proposal> Incoming = new();
+    // Proposals to the local player that wait for an answer.
+    public static readonly List<Proposal> Pending = new();
+    private static int received;
     private static HashSet<ICompany>? providersForLocalPlayer;
 
     public static int Key(BusinessContract c) => (int)(Hashing.Fnv(FormattableString.Invariant(
@@ -89,7 +97,7 @@ internal static class BusinessDeals
         if (local == null || (contract.Provider != local && contract.Client != local)) return false;
         var other = contract.Provider == local ? contract.Client : contract.Provider;
         Api.MpApi.Send(ProposalChannel, System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(DataConverter.BusinessContractToSaveObject(contract))));
-        Notify($"Deal proposed to {other.Name}; it starts when they accept.");
+        Notify.Show($"Deal proposed to {other.Name}", $"It starts if they accept within {AnswerDays} days.");
         EntityIO.Log?.Invoke($"MP: deal proposed to {other.Name}");
         return false;
     }
@@ -100,7 +108,32 @@ internal static class BusinessDeals
         var dto = JsonUtility.FromJson<SaveObject.BusinessContract>(json);
         int local = Player.Instance?.Company?.SaveID ?? -1;
         if (dto.ProviderID != local && dto.ClientID != local) return;
-        Incoming.Add(new Proposal { FromSlot = fromSlot, Json = json, Text = Describe(dto) });
+        Receive(fromSlot, json, dto);
+    }
+
+    private static DateTime Today => DateController.Instance.CurrentDate;
+    private static string Day(DateTime date) => StringFormatter.DateToString(date);
+
+    private static void Receive(int fromSlot, string json, SaveObject.BusinessContract dto)
+    {
+        int local = Player.Instance?.Company?.SaveID ?? -1;
+        var company = DataFinder.FindCompany(dto.ProviderID == local ? dto.ClientID : dto.ProviderID);
+        var player = Api.MpApi.Runtime?.Session?.Players.FirstOrDefault(p => p.Slot == fromSlot);
+        var proposal = new Proposal
+        {
+            FromSlot = fromSlot, Json = json, Text = Describe(dto), From = player?.Name ?? "A player", Company = company?.Name ?? "their company",
+            Expires = Today.AddDays(AnswerDays), Key = "deal:" + ++received,
+        };
+        Pending.Add(proposal);
+        var letter = Mail.Post(proposal.Key, "Proposal from " + proposal.Company, $"{proposal.From} · {proposal.Company}",
+            proposal.Text + $"\n\n<color={Theme.Hex(Paint.TextLow)}>Answer by {Day(proposal.Expires)}; without an answer it is declined then.</color>");
+        if (letter != null)
+        {
+            letter.Accept = ("Accept", () => Answer(proposal, true));
+            letter.Decline = ("Decline", () => Answer(proposal, false));
+            Mail.Update(letter);
+        }
+        Notify.Show("Business proposal from " + proposal.From, "Open Email to accept or decline it.");
     }
 
     // Dev preview (mp-dev "preview-deal"): a foundry proposal from another player's company to this one.
@@ -113,7 +146,7 @@ internal static class BusinessDeals
             StartDate = new ProcessorTycoon.TimeSystem.Date(now.Year, now.Month), TerminationDate = new ProcessorTycoon.TimeSystem.Date(now.Year + 3, now.Month),
             ContractValues = new List<int> { 40, 25, 2 }, MonetaryValues = new List<float> { 1_500_000f, 750_000f }, Conditions = new List<bool> { false },
         };
-        Incoming.Add(new Proposal { FromSlot = fromSlot, Json = JsonUtility.ToJson(dto), Text = Describe(dto) });
+        Receive(fromSlot, JsonUtility.ToJson(dto), dto);
     }
 
     public static void OnDeclined(int fromSlot, byte[] data)
@@ -122,15 +155,36 @@ internal static class BusinessDeals
         int local = Player.Instance?.Company?.SaveID ?? -1;
         if (dto.ProviderID != local && dto.ClientID != local) return;
         var other = DataFinder.FindCompany(dto.ProviderID == local ? dto.ClientID : dto.ProviderID);
-        Notify($"{other?.Name ?? "The other player"} declined the deal.");
+        Notify.Show($"{other?.Name ?? "The other player"} declined your deal");
     }
 
-    public static void Answer(Proposal proposal, bool accept)
+    public static void OnExpired(int fromSlot, byte[] data)
     {
-        Incoming.Remove(proposal);
-        if (!accept) { Api.MpApi.Send(DeclineChannel, System.Text.Encoding.UTF8.GetBytes(proposal.Json)); return; }
-        if (Ownership.IsHost) AddApproved(proposal.Json, m => EntityIO.Log?.Invoke(m));
+        var dto = JsonUtility.FromJson<SaveObject.BusinessContract>(System.Text.Encoding.UTF8.GetString(data));
+        int local = Player.Instance?.Company?.SaveID ?? -1;
+        if (dto.ProviderID != local && dto.ClientID != local) return;
+        var other = DataFinder.FindCompany(dto.ProviderID == local ? dto.ClientID : dto.ProviderID);
+        Notify.Show($"{other?.Name ?? "The other player"} did not answer", $"Your deal proposal expired after {AnswerDays} days.");
+    }
+
+    public static void Answer(Proposal proposal, bool accept, bool expired = false)
+    {
+        if (!Pending.Remove(proposal)) return;
+        if (!accept) Api.MpApi.Send(expired ? ExpiredChannel : DeclineChannel, System.Text.Encoding.UTF8.GetBytes(proposal.Json));
+        else if (Ownership.IsHost) AddApproved(proposal.Json, m => EntityIO.Log?.Invoke(m));
         else Commands.Enqueue("business-add-approved", proposal.Json);
+        var letter = Mail.Find(proposal.Key);
+        if (letter == null) return;
+        letter.Body = proposal.Text + "\n\n<b>" + (accept ? $"You accepted it on {Day(Today)}." : expired ? $"Declined automatically on {Day(Today)}: no answer in time." : $"You declined it on {Day(Today)}.") + "</b>";
+        letter.Accept = letter.Decline = null;
+        Mail.Update(letter);
+    }
+
+    // Every frame of a running session: proposals nobody answered in time are declined.
+    public static void Tick()
+    {
+        if (Pending.Count == 0 || DateController.Instance == null) return;
+        foreach (var proposal in Pending.Where(p => Today >= p.Expires).ToList()) Answer(proposal, false, expired: true);
     }
 
     private static void AddApproved(string json, Action<string> log)
@@ -163,11 +217,6 @@ internal static class BusinessDeals
         lines.Add($"Term: {Month(dto.StartDate)} to {Month(dto.TerminationDate)}{(dto.RenewalEnabled ? ", renews automatically" : "")}");
         if (m.Count >= 2) lines.Add($"Fines: provider {Money(m[0])}, client {Money(m[1])}; ending it early costs {Money(exclusive ? m[1] : m[0] * 6f)}");
         return string.Join("\n", lines);
-    }
-
-    private static void Notify(string text)
-    {
-        try { ProcessorTycoon.PopupSystem.PopupManager.Instance.InstantiateGenericNotification(text); } catch { }
     }
 
     // Host: execute a peer's deal command (trusted peers, D12).

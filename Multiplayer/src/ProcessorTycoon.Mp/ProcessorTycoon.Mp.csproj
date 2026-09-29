@@ -11,6 +11,8 @@
     <RestoreAdditionalProjectSources>https://api.nuget.org/v3/index.json;https://nuget.bepinex.dev/v3/index.json;https://nuget.samboy.dev/v3/index.json</RestoreAdditionalProjectSources>
     <RequiresGame>true</RequiresGame>
     <!-- Steam transport (D50): fetched by ..\..\tools\fetch-steamworks.ps1, never committed. -->
+    <!-- Processor Tycoon Mod API: its source is vendored into ModApi/ (git subtree) and compiled into this plugin. -->
+    <ModApiDir Condition="'$(ModApiDir)' == ''">$(RepoRoot)ModApi\</ModApiDir>
     <SteamworksDir>$(RepoRoot)artifacts\lib\Steamworks.NET-2025.164.1\Windows-x64</SteamworksDir>
   </PropertyGroup>
 
@@ -24,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ProcessorTycoon.Mp.Core\ProcessorTycoon.Mp.Core.csproj" />
+    <Compile Include="$(ModApiDir)src\**\*.cs" Link="ModApi\%(RecursiveDir)%(Filename)%(Extension)" />
     <Reference Include="Assembly-CSharp" Publicize="true">
       <HintPath>$(GameManagedDir)\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>

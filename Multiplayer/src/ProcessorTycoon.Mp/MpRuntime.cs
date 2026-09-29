@@ -25,7 +25,7 @@ internal sealed class MpRuntime
     private readonly ManualLogSource logger;
     private readonly string clientId;
     private readonly List<string> recent = new();
-    private readonly List<string> chat = new();
+    private readonly List<ChatLine> chat = new();
     private SessionBase? reportedSession;
 
     public MpRuntime(ManualLogSource logger, string modVersion, string clientId)
@@ -39,9 +39,12 @@ internal sealed class MpRuntime
     public SessionBase? Session { get; private set; }
     public string LastError { get; private set; } = "";
     public IReadOnlyList<string> Recent => recent;
-    public IReadOnlyList<string> ChatLines => chat;
+    // Chat of the running session, public and private lines (at most 100).
+    public IReadOnlyList<ChatLine> ChatLines => chat;
+    // Public messages (sender slot, text), for other mods (MpApi.Chat).
     public event Action<int, string>? Chat;
-    public float LastChatAt { get; private set; } = -100f;
+    // Every line, public, private or from the mod itself (unknown @name).
+    public event Action<ChatLine>? ChatLine;
     // D58: the host asks this new player to set up their company (the UI opens the native game setup).
     public event Action<SessionRules>? SetupRequested;
     public int CaretakerDays { get; set; } = 182;
@@ -137,10 +140,28 @@ internal sealed class MpRuntime
 
     public void SubmitCompany(CompanySetup setup) => (Session as PeerSession)?.SubmitCompany(setup);
 
+    // "@Name text" sends a private message to that player (the longest matching name, any case); anything else goes to
+    // everyone.
     public void SendChat(string text)
     {
         if (Session == null || string.IsNullOrWhiteSpace(text)) return;
-        Session.SendChat(text.Trim());
+        text = text.Trim();
+        if (text.StartsWith("@", StringComparison.Ordinal))
+        {
+            var target = Session.Players.Where(p => p.Slot != Session.LocalSlot && text.Length > p.Name.Length + 1 && text.Substring(1).StartsWith(p.Name, StringComparison.OrdinalIgnoreCase) && char.IsWhiteSpace(text[p.Name.Length + 1]))
+                .OrderByDescending(p => p.Name.Length).FirstOrDefault();
+            if (target == null) { AddChat(new ChatLine { From = -1, To = Session.LocalSlot, Name = "", Text = "No player by that name. Write @ and a player's name, then your message." }); return; }
+            Session.SendChat(text.Substring(target.Name.Length + 1).Trim(), target.Slot);
+            return;
+        }
+        Session.SendChat(text);
+    }
+
+    private void AddChat(ChatLine line)
+    {
+        chat.Add(line);
+        if (chat.Count > 100) chat.RemoveAt(0);
+        ChatLine?.Invoke(line);
     }
 
     public void Update(float deltaTime)
@@ -164,6 +185,7 @@ internal sealed class MpRuntime
             if (routes != lastRoutes && routes.Length > 0) Log("MP: Steam route: " + string.Join("; ", SteamGate.Routes(Transport)));
             lastRoutes = routes;
         }
+        if (Session.State == SessionState.Running) BusinessDeals.Tick();
         if (Session.State == SessionState.Running && reportedSession != Session)
         {
             reportedSession = Session;
@@ -207,19 +229,19 @@ internal sealed class MpRuntime
     {
         Session = session;
         session.ChannelReceived += Api.MpApi.Deliver;
-        session.ChatReceived += (slot, text) =>
+        session.ChatReceived += (slot, text, to) =>
         {
-            string name = session.Players.FirstOrDefault(p => p.Slot == slot)?.Name ?? $"slot {slot}";
-            chat.Add($"{name}: {text}");
-            LastChatAt = UnityEngine.Time.unscaledTime;
-            if (chat.Count > 30) chat.RemoveAt(0);
-            Chat?.Invoke(slot, text);
+            AddChat(new ChatLine { From = slot, To = to, Name = session.Players.FirstOrDefault(p => p.Slot == slot)?.Name ?? $"slot {slot}", Text = text });
+            if (to < 0) Chat?.Invoke(slot, text);
         };
     }
 
     private void End()
     {
         Session = null;
+        chat.Clear();
+        ProcessorTycoonModApi.Game.Mail.Clear();
+        BusinessDeals.Pending.Clear();
         Transport = null;
         if (OnSteam) SteamGate.CloseLobby();
         OnSteam = false;
@@ -272,4 +294,13 @@ internal sealed class MpRuntime
             Mods = string.Join(",", mods),
         };
     }
+}
+
+// One chat line: From is the sender slot (−1: a note from the mod itself), To the recipient slot of a private message or
+// −1 for everyone.
+internal sealed class ChatLine
+{
+    public int From, To = -1;
+    public string Name = "", Text = "";
+    public bool Private => To >= 0;
 }

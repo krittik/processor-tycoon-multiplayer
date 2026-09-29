@@ -45,7 +45,7 @@ public abstract class Message
             MsgType.CheckpointResult => CheckpointResult.Read(r),
             MsgType.ResyncRequest => new ResyncRequest { Reason = r.Str() },
             MsgType.Roster => new Roster { Players = PlayerInfo.ReadList(r) },
-            MsgType.Chat => new Chat { Slot = r.I32(), Text = r.Str() },
+            MsgType.Chat => new Chat { Slot = r.I32(), Text = r.Str(), To = r.I32() },
             MsgType.Ping => new Ping { Ticks = r.I64() },
             MsgType.Pong => new Pong { Ticks = r.I64() },
             MsgType.Leave => new Leave { Reason = r.Str() },
@@ -281,12 +281,14 @@ public sealed class Roster : Message
     protected override void WriteBody(WireWriter w) => PlayerInfo.WriteList(w, Players);
 }
 
+// To: the one player a private message is for (the host relays it only to them), or -1 for everyone.
 public sealed class Chat : Message
 {
     public override MsgType Type => MsgType.Chat;
     public int Slot;
     public string Text = "";
-    protected override void WriteBody(WireWriter w) => w.I32(Slot).Str(Text);
+    public int To = -1;
+    protected override void WriteBody(WireWriter w) => w.I32(Slot).Str(Text).I32(To);
 }
 
 public sealed class Ping : Message

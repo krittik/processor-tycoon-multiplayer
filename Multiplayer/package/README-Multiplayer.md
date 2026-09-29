@@ -37,6 +37,13 @@ The first time you join a session, the game's **New Game** screen opens as **Joi
 
 Other players' companies carry a small person icon after their name; hover it to see who leads them.
 
+## Chat and messages
+
+- **Chat** appears at the bottom left of the screen and fades out. Hover it to read the history (the mouse wheel scrolls back); press **Enter** to write and Enter again to send (Esc closes it).
+- **Private messages:** start with @ and the player's name, for example `@Alice want to trade?`, or click the envelope next to a player in the Multiplayer window. Only they get it, in their game **Email** under **Chat with …**; its **Reply** button answers.
+- **Business proposals** from other players arrive in **Email** too, with every term and **Accept** / **Decline** buttons. Without an answer they are declined automatically after 30 game days.
+- Prefer the chat in the window? Untick **Show chat on screen** in the Multiplayer window: messages then arrive as the game's notifications.
+
 ## Saving and continuing
 
 - **Checkpoints:** every machine saves one automatically on the 1st of each month once all players agree on the world state. They go to `Saves/Multiplayer/<session>/` and do not appear in the normal Load list. Manual saves made during a session go to the same folder.
@@ -48,7 +55,7 @@ Other players' companies carry a small person icon after their name; hover it to
 
 - **Steam:** invites through the Steam overlay are not available (the game is not a Steam app); use Friends hosting or the `steam:` address. Steam's own friends list "Join game" works while your game is running and the panel has been opened once.
 - **Contracts:** all players and the AI compete for the same contracts; the host decides who wins.
-- **Business deals:** deals with AI companies (for example foundry services) work for everyone. A deal with another player is a proposal: they get an Accept / Decline prompt. Architecture licences (such as the x86-64 agreement) work for everyone.
+- **Business deals:** deals with AI companies (for example foundry services) work for everyone. A deal with another player is a proposal: it reaches them by email with Accept / Decline. Architecture licences (such as the x86-64 agreement) work for everyone.
 - **Speed:** the game runs slower than single player, about 2–10 in-game days per second depending on era and number of players.
 
 ## Troubleshooting

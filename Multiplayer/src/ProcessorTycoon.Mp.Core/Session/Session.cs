@@ -38,7 +38,8 @@ public abstract class SessionBase : IDisposable
     public ulong LastCheckpointHash { get; protected set; }
     public int Resyncs { get; protected set; }
     public int DriftRepairs { get; protected set; }
-    public event Action<int, string>? ChatReceived;
+    // (sender slot, text, recipient slot or -1 for everyone). Private messages reach only their sender and recipient.
+    public event Action<int, string, int>? ChatReceived;
     public event Action<string, int, byte[]>? ChannelReceived;
 
     // Keepalive: idle connections still carry a ping every PingInterval seconds; silence longer than Timeout drops
@@ -89,7 +90,7 @@ public abstract class SessionBase : IDisposable
         }
     }
 
-    public virtual void SendChat(string text) { }
+    public virtual void SendChat(string text, int to = -1) { }
     public virtual void SendChannel(string name, byte[] data) { }
 
     public abstract void Leave(string reason);
@@ -111,7 +112,7 @@ public abstract class SessionBase : IDisposable
         Transport.Send(peer, m.Encode());
     }
 
-    protected void RaiseChat(int slot, string text) => ChatReceived?.Invoke(slot, text);
+    protected void RaiseChat(int slot, string text, int to) => ChatReceived?.Invoke(slot, text, to);
     protected void RaiseChannel(string name, int slot, byte[] data) => ChannelReceived?.Invoke(name, slot, data);
 
     protected void ApplyRemote(int slot, List<EntityDelta> deltas)

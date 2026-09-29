@@ -210,7 +210,8 @@ Check("plugin guid is fixed", MpProtocol.PluginGuid == "processortycoon.multipla
     var w2 = new FakeWorld(isHost: false) { Verbose = verbose };
     PeerSession? p2 = null;
     var chats = new List<string>();
-    host.ChatReceived += (s, t) => chats.Add($"{s}:{t}");
+    host.ChatReceived += (s, t, to) => chats.Add($"{s}:{t}:{to}");
+    var bobHeard = new List<string>();
 
     void Pump(int frames)
     {
@@ -229,10 +230,15 @@ Check("plugin guid is fixed", MpProtocol.PluginGuid == "processortycoon.multipla
     p2.Connect("loop");
     Pump(3);
     Check("peer 2 running", p2.State == SessionState.Running && p2.LocalSlot == 2);
+    p2.ChatReceived += (s, t, to) => bobHeard.Add($"{s}:{t}:{to}");
     Check("roster has 3 players", host.Players.Count == 3 && p1.Players.Count == 3);
     p1.SendChat("hi");
     Pump(2);
-    Check("chat reaches host", chats.Contains("1:hi"));
+    Check("chat reaches host", chats.Contains("1:hi:-1") && bobHeard.Contains("1:hi:-1"));
+    p1.SendChat("psst", 2);
+    host.SendChat("to alice", 1);
+    Pump(2);
+    Check("private message reaches only its recipient", bobHeard.Contains("1:psst:2") && !chats.Any(c => c.Contains("psst")) && !bobHeard.Any(c => c.Contains("to alice")), string.Join(",", bobHeard));
 
     // Forced mismatch: the host's applier "forgets" a field Alice's company changes.
     hostWorld.BugEntity = 10_000_000;

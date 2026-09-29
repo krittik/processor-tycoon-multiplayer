@@ -2,18 +2,21 @@
 
 ## 0.3.0 "Lockstep" — 2026-09-29 (preview)
 
-Protocol 6: every player needs this version.
+Protocol 7: every player needs this version.
 
-- **New look:** the multiplayer window, dialogs and notices are drawn like the game's own windows (its fonts, icons and theme, light and dark). Open it from the **Multiplayer** entry in the bottom bar, the new **Multiplayer** item in the main menu, or F9. The players list shows every player with their company, colour and status; chat lives there too.
+- **New look:** the multiplayer window, dialogs and notices are drawn like the game's own windows (its fonts, icons and theme, light and dark). Open it from the **Multiplayer** entry in the bottom bar, the new **Multiplayer** item in the main menu, or F9. The players list shows every player with their company, colour and status.
 - **Found your own company:** joining a session for the first time opens the game's New Game screen with the host's difficulty and date locked. Choose the name, founder, colour and type (CPU, CPU fabless or foundry); the company is created when you press Join, with a new game's funds and technology for the current year. Returning players get their company back as before.
 - **Player companies are marked** with a person icon (and a tooltip naming the player) wherever the game shows company names.
 - **Disconnects:** a disconnected player's company carries on exactly as they left it for half a game year (host setting `Session.CaretakerDays`); only then does the AI start playing it. Everyone sees a countdown and gets the game's notifications when players join, leave, return, go bankrupt or are taken over by the AI.
 - **Bankruptcy:** a bankrupt player's company is frozen (projects cancelled, products retired, research stopped) and the player stays to watch, or leaves; a bankrupt host no longer ends the session.
-- **Business proposals** between players show every term (capacity, price, term, renewal, fines).
+- **Chat on screen:** messages appear at the bottom left like the Agent mod's action feed and fade out; hover them to read the history (the mouse wheel scrolls back) and press Enter to write. Turn it off under **Show chat on screen** in the Multiplayer window (or `Chat.Overlay` in the config): chat then lives in the window and messages arrive as the game's notifications.
+- **Private messages:** start a message with @ and a player's name (or click the envelope next to them in the players list). Only that player gets it, as a conversation in their game **Email** (Chat with …); its **Reply** button opens the chat for an answer.
+- **Business proposals by email:** a deal another player proposes arrives as an email with every term (capacity, price, term, renewal, fines) and the Email window's **Accept** / **Decline** buttons, plus a notification. Nothing interrupts your game; unanswered for 30 game days, the proposal is declined automatically and the proposer is told.
 - **About:** the version and release name sit in the window's footer; click them for credits, license, links to GitHub and Discord, and **Save diagnostics** / **Report an issue** for bug reports (the diagnostics zip holds the log, the settings and any desync reports; **Open folder** shows it).
 - **Clearer hosting:** the Multiplayer window is organised as Host a game / Join a game / Continue a session. Choose **Steam** or **IP address** under Connection; the details (what the other players need, port forwarding, virtual networks) are in the info icons' tooltips, and the IP option shows your addresses next to the port. Saved sessions list their players, the in-game date and when you last played. From the main menu, **New game and host** or **Load a save and host** opens the game's own screen and hosts as soon as the game runs.
 - **One pattern with the Agent mod:** the bottom-bar item (shown during a game; the main menu has its own entry) opens the window above it; a status line comes first, explanations sit in tooltips, a choice is a strip like the game's tabs, at most one blue button per section; the title bar's × closes a window; buttons press like the game's; the footer's version link opens About; no tooltips on the bottom bar.
 - Your multiplayer name defaults to your Steam name (or "Player"), never your Windows user name.
+- Built on the new [Processor Tycoon Mod API](https://github.com/krittik/processor-tycoon-mod-api) (compiled in; nothing extra to install), shared with the Agent mod.
 - **For other mods:** `MpApi.LocalBankrupt` and `Status()["bankrupt"]` report a bankrupt local company (the Agent mod 0.5.0 uses it).
 - Released under the MIT license (LICENSE.txt in the plugin folder). The lobby layout was polished (compact port field, short Resume buttons).
 - **Fix (D54):** closing the game's Default warning or "Select New Research" on the host paused the session for everyone.

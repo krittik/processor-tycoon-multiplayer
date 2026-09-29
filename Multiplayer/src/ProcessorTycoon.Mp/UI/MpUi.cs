@@ -1,9 +1,11 @@
+using ProcessorTycoonModApi;
 using ProcessorTycoonMp.Adapter;
 using UnityEngine;
 
 namespace ProcessorTycoonMp.UI;
 
-// All of the mod's UI (D59). Nothing is built in headless games (-batchmode): they are driven through mp-dev/cmd.txt.
+// All of the mod's UI (D59, D61, D62), built with the Processor Tycoon Mod API. Nothing is built in headless games
+// (-batchmode): they are driven through mp-dev/cmd.txt.
 internal sealed class MpUi
 {
     private readonly MainWindow main;
@@ -13,14 +15,17 @@ internal sealed class MpUi
     private readonly Notices notices;
     private readonly PlayerTags tags;
     private readonly JoinSetup setup;
+    private readonly Chat chat;
 
     public MpUi(MpRuntime runtime, Plugin plugin)
     {
-        Look.Refresh();
+        Surface.Get().Tick();
         dialogs = new Dialogs(runtime);
-        main = new MainWindow(runtime, plugin, dialogs.ShowCredits);
+        chat = new Chat(runtime, plugin);
+        main = new MainWindow(runtime, plugin, dialogs.ShowCredits, chat);
+        chat.WriteInWindow = text => { Show(true); main.WriteChat(text); };
         tray = new Tray(runtime, Toggle);
-        menu = new MenuEntry(() => Show(true));
+        menu = new MenuEntry("Multiplayer", () => Show(true));
         notices = new Notices(runtime);
         tags = new PlayerTags(runtime);
         setup = new JoinSetup(runtime);
@@ -39,19 +44,21 @@ internal sealed class MpUi
 
     public void Show(bool visible) { if (!visible) main.Window.Close(); else if (!main.Window.Visible) Toggle(); }
     public void ShowCredits() => dialogs.ShowCredits();
+    public void WriteChat(string text) => chat.Write(text);
     public void CloseAll() { main.Window.Close(); dialogs.CloseAll(); }
 
     public void Update()
     {
         Surface.Get().Tick();
         tray.Refresh();
-        menu.Refresh();
+        menu.Tick();
         main.Refresh();
         main.TickPendingHost(tray.Item);
         setup.Tick();
         dialogs.Tick();
         notices.Tick();
         tags.Tick();
+        chat.Tick();
         // The native default countdown stops at "Bankruptcy in 0 days" once the company is bankrupt.
         if (Bankruptcy.LocalSpectator && ProcessorTycoon.Bank.BankruptcyHandler.Instance?.bankruptcyText is { } label && label.text != "Bankrupt · watching")
             label.text = "Bankrupt · watching";

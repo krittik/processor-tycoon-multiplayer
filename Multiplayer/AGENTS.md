@@ -23,6 +23,10 @@ The mod must read and write internal simulation state. That access is allowed, b
 - Game-version-specific knowledge lives only in `Adapter/`. Record every new finding in GAME_INTERNALS.md with its decompiled file.
 - Protocol changes bump `MpProtocol.Version` and update PROTOCOL.md.
 
+## Mod API
+
+`../ModApi/` is the vendored [Processor Tycoon Mod API](https://github.com/krittik/processor-tycoon-mod-api) (git subtree, compiled into the plugin). Change it in that repository, then `git subtree pull --prefix ModApi https://github.com/krittik/processor-tycoon-mod-api main --squash` here; never edit `ModApi/` in place.
+
 ## Working rules
 
 - Never act on a game process you did not start. Live tests run in testbeds (`../artifacts/testbeds/A|B…`, TESTING.md).

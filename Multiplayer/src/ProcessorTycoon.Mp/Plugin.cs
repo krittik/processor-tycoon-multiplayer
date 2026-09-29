@@ -21,6 +21,7 @@ public sealed class Plugin : BaseUnityPlugin
     internal ConfigEntry<string> HostPort = null!;
     internal ConfigEntry<string> JoinAddress = null!;
     internal ConfigEntry<string> HostVia = null!;
+    internal ConfigEntry<bool> ChatOverlay = null!;
     private ConfigEntry<string> clientId = null!;
     private ConfigEntry<bool> steamEnabled = null!;
     private ConfigEntry<bool> steamForceRelay = null!;
@@ -37,6 +38,7 @@ public sealed class Plugin : BaseUnityPlugin
         // Earlier versions defaulted to the Windows user name; never show that to other players unless it was typed in.
         if (PlayerName.Value == Environment.UserName) PlayerName.Value = "";
         HostVia = Config.Bind("Network", "HostVia", "Steam", "How you host: Steam (friends join through Steam, no port forwarding) or Address (players connect to your IP address and HostPort).");
+        ChatOverlay = Config.Bind("Chat", "Overlay", true, "Show chat at the bottom left of the screen during a session (hover it to read more, Enter to write). Off: chat lives in the Multiplayer window and messages arrive as notifications.");
         HostPort = Config.Bind("Network", "HostPort", TcpTransport.DefaultPort.ToString(), "TCP port to listen on when hosting (forward it for internet play).");
         JoinAddress = Config.Bind("Network", "JoinAddress", "127.0.0.1:" + TcpTransport.DefaultPort, "Last address joined (ip:port, or steam:<Steam id>).");
         steamEnabled = Config.Bind("Steam", "Enabled", true, "Offer Steam hosting and joining (friends, no port forwarding). Steam starts when you open the multiplayer panel and shows you as playing Spacewar (Valve's test app).");
@@ -56,9 +58,11 @@ public sealed class Plugin : BaseUnityPlugin
         MpApi.Runtime = runtime;
         MpApi.RegisterChannel(Adapter.BusinessDeals.ProposalChannel, Adapter.BusinessDeals.OnProposal);
         MpApi.RegisterChannel(Adapter.BusinessDeals.DeclineChannel, Adapter.BusinessDeals.OnDeclined);
+        MpApi.RegisterChannel(Adapter.BusinessDeals.ExpiredChannel, Adapter.BusinessDeals.OnExpired);
+        ProcessorTycoonModApi.Game.Mail.Owner = MpProtocol.PluginGuid;
         runtime.CaretakerDays = System.Math.Max(1, caretakerDays.Value);
         if (!Application.isBatchMode) ui = new MpUi(runtime, this);
-        dev = new DevControl(runtime, Paths.GameRootPath) { ShowPanel = visible => ui?.Show(visible), ShowCredits = () => ui?.ShowCredits(), CloseUi = () => ui?.CloseAll() };
+        dev = new DevControl(runtime, Paths.GameRootPath) { ShowPanel = visible => ui?.Show(visible), ShowCredits = () => ui?.ShowCredits(), CloseUi = () => ui?.CloseAll(), WriteChat = text => ui?.WriteChat(text) };
         SteamGate.Enabled = steamEnabled.Value;
         if (steamForceRelay.Value) SteamGate.SetForceRelay(true);
         SteamGate.Log += runtime.Log;

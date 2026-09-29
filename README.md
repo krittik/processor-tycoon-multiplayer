@@ -47,4 +47,4 @@ Architecture, protocol, design decisions and test tooling: [Multiplayer/README.m
 
 Find players, ask questions and share ideas on [Discord](https://discord.gg/YKdTjge7J2). Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Released under the [MIT license](LICENSE).
 
-By [Critique (Sevastyanoff)](https://discord.gg/YKdTjge7J2), in collaboration with [Claude Code](https://claude.com/claude-code) (Anthropic). Uses BepInEx (LGPL-2.1), HarmonyX (MIT) and Steamworks.NET (MIT).
+By [Critique (Sevastyanoff)](https://discord.gg/YKdTjge7J2), in collaboration with [Claude Code](https://claude.com/claude-code) (Anthropic). Uses BepInEx (LGPL-2.1), HarmonyX (MIT), Steamworks.NET (MIT) and the [Processor Tycoon Mod API](https://github.com/krittik/processor-tycoon-mod-api) (MIT, vendored in `ModApi/`).
