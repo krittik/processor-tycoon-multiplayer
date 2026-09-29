@@ -99,7 +99,7 @@ internal sealed class DevControl
                 case "load": SaveHandler.Instance.Load(line.Substring(5).Trim()); break;
                 case "diagnostics": runtime.Log("MP dev: diagnostics saved to " + DiagnosticsBundle.Create()); break;
                 case "panel": ShowPanel?.Invoke(Arg(1, "on") == "on"); break;
-                case "uidump": runtime.Log("MP dev: UI dump written to " + UiDump.Write(dir, Arg(1, "Window"))); break;
+                case "uidump": runtime.Log("MP dev: UI dump written to " + ProcessorTycoonModApi.UiDump.Write(dir, Arg(1, "Window"))); break;
                 case "quit": Application.Quit(); break;
                 default: runtime.Log("MP dev: unknown command"); break;
             }

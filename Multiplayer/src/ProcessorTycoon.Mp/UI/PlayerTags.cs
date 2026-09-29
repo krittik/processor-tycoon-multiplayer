@@ -3,6 +3,7 @@ using System.Linq;
 using ProcessorTycoon;
 using ProcessorTycoon.TooltipSystem;
 using ProcessorTycoonModApi;
+using ProcessorTycoonModApi.Game;
 using ProcessorTycoonMp.Adapter;
 using ProcessorTycoonMp.Core.Protocol;
 using ProcessorTycoonMp.Core.Session;
@@ -17,7 +18,7 @@ namespace ProcessorTycoonMp.UI;
 // displayed name and what the Agent mod reads stay exactly the game's.
 internal sealed class PlayerTags
 {
-    private sealed class Tag { public TMP_Text Text = null!; public RectTransform Rect = null!; public TooltipData Tip = null!; public string Company = ""; }
+    private sealed class Tag { public TMP_Text Text = null!; public GameObject Badge = null!; public TooltipData Tip = null!; public string Company = ""; }
 
     private readonly MpRuntime runtime;
     private readonly Dictionary<TMP_Text, Tag> tags = new();
@@ -29,7 +30,6 @@ internal sealed class PlayerTags
     {
         var s = runtime.Session;
         if (s == null || s.State != SessionState.Running || !GameWorld.CampaignLoaded) { Clear(); return; }
-        foreach (var tag in tags.Values) Place(tag);
         if (Time.unscaledTime < next) return;
         next = Time.unscaledTime + 1f;
         var players = new Dictionary<string, PlayerInfo>();
@@ -54,7 +54,7 @@ internal sealed class PlayerTags
         }
         foreach (var dead in tags.Keys.Where(t => t == null || !alive.Contains(t)).ToList())
         {
-            if (tags[dead].Rect != null) Object.Destroy(tags[dead].Rect.gameObject);
+            if (tags[dead].Badge != null) Object.Destroy(tags[dead].Badge);
             tags.Remove(dead);
         }
     }
@@ -62,49 +62,16 @@ internal sealed class PlayerTags
     private static string Status(SessionBase s, PlayerInfo p) =>
         p.Connected ? "Online now." : p.AiControl ? "Away: the AI plays their company until they return." : "Away: their company carries on as they left it.";
 
+    // Mod API TextBadge (follows the name) with the game's own tooltip, since it sits on the game's canvases.
     private static Tag Create(TMP_Text text)
     {
-        var rect = Ui.Rect("MpPlayerTag", text.transform);
-        rect.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-        rect.anchorMin = rect.anchorMax = new Vector2(0, .5f);
-        rect.pivot = new Vector2(0, .5f);
-        rect.sizeDelta = new Vector2(16, 16);
-        var image = rect.gameObject.AddComponent<Image>();
-        image.sprite = Theme.Sprite("person");
-        image.preserveAspect = true;
-        Painted.Add(image, Paint.Cta);
-        var tip = NativeTooltip(rect.gameObject, "Player company");
-        var tag = new Tag { Text = text, Rect = rect, Tip = tip };
-        Place(tag);
-        return tag;
-    }
-
-    // The game's own tooltip (TooltipTrigger with runtime TooltipData): these icons sit on the game's canvases.
-    private static TooltipData NativeTooltip(GameObject target, string header)
-    {
-        var data = ScriptableObject.CreateInstance<TooltipData>();
-        data.Header = header;
-        data.Content = "";
-        data.Delay = .15f;
-        target.AddComponent<TooltipTrigger>().tooltipData = data;
-        return data;
-    }
-
-    // Right after the rendered name, inside the text's own rectangle when it is too narrow.
-    private static void Place(Tag tag)
-    {
-        if (tag.Text == null || tag.Rect == null) return;
-        var bounds = tag.Text.textBounds;
-        var textRect = tag.Text.rectTransform.rect;
-        float size = Mathf.Clamp(tag.Text.fontSize, 12, 18);
-        tag.Rect.sizeDelta = new Vector2(size, size);
-        float x = bounds.size.x > 0 ? bounds.max.x - textRect.xMin + 4 : 0;
-        tag.Rect.anchoredPosition = new Vector2(Mathf.Min(x, textRect.width - size), bounds.size.y > 0 ? bounds.center.y - textRect.center.y : 0);
+        var badge = TextBadge.Attach(text, Theme.Sprite("person"), Paint.Cta, "MpPlayerTag").gameObject;
+        return new Tag { Text = text, Badge = badge, Tip = NativeTooltip.On(badge, "Player company") };
     }
 
     private void Clear()
     {
-        foreach (var tag in tags.Values) if (tag.Rect != null) Object.Destroy(tag.Rect.gameObject);
+        foreach (var tag in tags.Values) if (tag.Badge != null) Object.Destroy(tag.Badge);
         tags.Clear();
     }
 }

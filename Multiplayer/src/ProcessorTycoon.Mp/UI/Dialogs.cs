@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.IO;
 using ProcessorTycoonModApi;
 using UnityEngine;
 
@@ -44,28 +42,11 @@ internal sealed class Dialogs
         if (runtime.Session == null && bankrupt != null && bankrupt.Visible) bankrupt.Close();
     }
 
-    // A zip for bug reports, then where it went and what to do with it.
+    // A zip for bug reports, then where it went and what to do with it (Mod API BugReport).
     private void SaveDiagnostics()
     {
-        string zip = "", error = "";
-        try { zip = Diagnostics.DiagnosticsBundle.Create(); }
-        catch (Exception e) { error = e.Message; runtime.Log("MP: could not save diagnostics: " + e.Message); }
         diagnostics?.Destroy();
-        var w = new Window(Surface.Get(), "Diagnostics", 420);
-        var row = Ui.Row(w.Body, 6, 24);
-        Ui.Label(row.transform, error.Length > 0 ? "Could not save diagnostics" : "Saved " + Path.GetFileName(zip), 15, error.Length > 0 ? Paint.Negative : Paint.Text);
-        if (error.Length == 0) Ui.Info(row.transform, "What is in it", "The game's log (BepInEx/LogOutput.log), the multiplayer settings and any desync reports. Check it for anything private before you share it.");
-        Ui.Spacer(row.transform);
-        Ui.Label(w.Body, error.Length > 0 ? error : "Attach it to your bug report on GitHub or Discord.", 14, Paint.TextLow, wrap: true);
-        var footer = w.Footer();
-        if (error.Length == 0)
-        {
-            string folder = Path.GetDirectoryName(zip) ?? "";
-            Ui.Button(footer.transform, "Open folder", () => Application.OpenURL("file:///" + folder.Replace('\\', '/')));
-        }
-        Ui.Button(footer.transform, "Report an issue", () => Application.OpenURL(ModInfo.Issues), cta: true);
-        diagnostics = w;
-        w.Show(new Vector2(0, -40));
+        diagnostics = BugReport.Show(Surface.Get(), Diagnostics.DiagnosticsBundle.Create, Diagnostics.DiagnosticsBundle.Contents, ModInfo.Issues);
     }
 
     private Window BuildBankrupt()
