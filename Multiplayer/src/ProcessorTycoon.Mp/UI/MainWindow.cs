@@ -303,7 +303,8 @@ internal sealed class MainWindow
             RefreshPlayers(s);
         });
 
-        Ui.Section(b, "Chat", "marketing_icon", "Write to everyone; start with @ and a player's name to send it only to them (it arrives in their Email). On screen, the chat sits at the bottom left: hover it to read more, press Enter to write.");
+        var chatHeader = Ui.Section(b, "Chat", "marketing_icon", "Write to everyone; start with @ and a player's name to send it only to them (it arrives in their Email). On screen, the chat sits at the bottom left: hover it to read more, press Enter to write.");
+        if (chat.Overlay) Ui.Button(chatHeader.transform.parent, "Write a message", () => chat.Write(), height: 24, size: 14);
         Ui.Check(b, "Show chat on screen", () => plugin.ChatOverlay.Value, on => { plugin.ChatOverlay.Value = on; mode = ""; });
         if (!chat.Overlay)
         {

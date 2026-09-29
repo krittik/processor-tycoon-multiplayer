@@ -39,7 +39,7 @@ Other players' companies carry a small person icon after their name; hover it to
 
 ## Chat and messages
 
-- **Chat** appears at the bottom left of the screen and fades out. Hover it to read the history (the mouse wheel scrolls back); press **Enter** to write and Enter again to send (Esc closes it).
+- **Chat** appears at the bottom left of the screen and fades out. Hover it to read the history (the mouse wheel scrolls back); press **Enter** to write (or **Write a message** in the Multiplayer window) and Enter again to send; Esc closes it.
 - **Private messages:** start with @ and the player's name, for example `@Alice want to trade?`, or click the envelope next to a player in the Multiplayer window. Only they get it, in their game **Email** under **Chat with …**; its **Reply** button answers.
 - **Business proposals** from other players arrive in **Email** too, with every term and **Accept** / **Decline** buttons. Without an answer they are declined automatically after 30 game days.
 - Prefer the chat in the window? Untick **Show chat on screen** in the Multiplayer window: messages then arrive as the game's notifications.

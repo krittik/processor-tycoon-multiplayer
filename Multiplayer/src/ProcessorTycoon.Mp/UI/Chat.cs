@@ -23,6 +23,7 @@ internal sealed class Chat
     private readonly Feed feed;
     private readonly Dictionary<int, List<string>> threads = new();
     private SessionBase? session;
+    private bool hinted;
 
     // The Multiplayer window's chat input, used while the overlay is off.
     public Action<string>? WriteInWindow;
@@ -42,8 +43,10 @@ internal sealed class Chat
     public void Tick()
     {
         var s = runtime.Session;
-        if (s != session) { session = s; feed.Clear(); threads.Clear(); }
+        if (s != session) { session = s; feed.Clear(); threads.Clear(); hinted = false; }
         feed.Enabled = Overlay && s?.State == SessionState.Running && GameWorld.CampaignLoaded;
+        // Once per session, so nobody has to find the chat in a tooltip; it fades like any line.
+        if (feed.Enabled && !hinted) { hinted = true; feed.Add("<color=#9DA3AA><i>Press Enter to chat · start with @name for a private email</i></color>"); }
         feed.Tick();
     }
 
