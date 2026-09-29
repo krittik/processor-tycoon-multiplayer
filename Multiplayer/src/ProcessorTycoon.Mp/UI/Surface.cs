@@ -151,6 +151,7 @@ internal sealed class Window
         row.childAlignment = TextAnchor.MiddleRight;
         row.childControlWidth = row.childControlHeight = true;
         row.childForceExpandWidth = row.childForceExpandHeight = false;
+        Kit.Size(row, height: 44);   // as tall with or without buttons, like the Agent mod's footer
         return row;
     }
 }

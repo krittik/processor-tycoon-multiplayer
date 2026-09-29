@@ -10,7 +10,7 @@ namespace ProcessorTycoonMp.UI;
 // window in light and dark themes. Values fall back to the light theme as measured from the native windows.
 internal static class Look
 {
-    public enum Paint { Window, Window2, TopBar, TopBarText, CloseIcon, CloseHover, Text, TextLow, Header, Button, ButtonText, ButtonTextOff, Cta, CtaText, Field, Line, LineActive, Scroll, ScrollBack, Positive, Negative, Row, RowAlt, Clear, Tray }
+    public enum Paint { Window, Window2, TopBar, TopBarText, CloseIcon, CloseHover, Text, TextLow, Header, Button, ButtonText, ButtonTextOff, Cta, CtaText, Field, Line, LineActive, Scroll, ScrollBack, Positive, Negative, Row, RowAlt, Clear, Tray, Icon, Tab, TabBar, TabText, TabTextHover, TabTextOn }
 
     public static TMP_FontAsset? Font { get; private set; }
     public static TMP_FontAsset? Mono { get; private set; }
@@ -25,6 +25,8 @@ internal static class Look
         [Paint.Cta] = Hex("#2784D2"), [Paint.CtaText] = Color.white, [Paint.Field] = Color.white, [Paint.Line] = Hex("#878787"),
         [Paint.LineActive] = Hex("#2784D2"), [Paint.Scroll] = Hex("#878787"), [Paint.ScrollBack] = Hex("#E0E0E0"), [Paint.Positive] = Hex("#126605"),
         [Paint.Negative] = Hex("#C62828"), [Paint.Row] = Color.white, [Paint.RowAlt] = Hex("#F0F1F3"), [Paint.Clear] = Color.clear, [Paint.Tray] = Hex("#C7CCD1"),
+        [Paint.Icon] = Hex("#858688"), [Paint.Tab] = Hex("#D9DADB"), [Paint.TabBar] = Hex("#2784D2"), [Paint.TabText] = Hex("#8B8B8C"),
+        [Paint.TabTextHover] = Hex("#5C5C5D"), [Paint.TabTextOn] = Hex("#111111"),
     };
     private static Theme? shownTheme;
 
@@ -75,6 +77,12 @@ internal static class Look
             palette[Paint.ScrollBack] = theme.ScrollBarBackground;
             palette[Paint.Row] = theme.SpreadsheetColor1;
             palette[Paint.RowAlt] = theme.SpreadsheetColor2;
+            palette[Paint.Icon] = theme.IsDark ? theme.TextLowHierarchy : Hex("#858688");   // the native info icon (ThemeableIcon)
+            palette[Paint.Tab] = theme.TabBackground;
+            palette[Paint.TabBar] = theme.TabBar;
+            palette[Paint.TabText] = theme.TabGroupText.NormalColor;
+            palette[Paint.TabTextHover] = theme.TabGroupText.MouseOverColor;
+            palette[Paint.TabTextOn] = theme.TabGroupText.SelectedColor;
             if (ProcessorTycoon.Colors.Instance != null)
             {
                 palette[Paint.Positive] = ProcessorTycoon.Colors.Instance.DynamicPositiveColor();

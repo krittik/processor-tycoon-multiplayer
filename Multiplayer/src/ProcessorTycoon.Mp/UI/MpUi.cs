@@ -18,7 +18,7 @@ internal sealed class MpUi
     {
         Look.Refresh();
         dialogs = new Dialogs(runtime);
-        main = new MainWindow(runtime, plugin, dialogs.ShowCredits, dialogs.ShowDiagnostics);
+        main = new MainWindow(runtime, plugin, dialogs.ShowCredits);
         tray = new Tray(runtime, Toggle);
         menu = new MenuEntry(() => Show(true));
         notices = new Notices(runtime);

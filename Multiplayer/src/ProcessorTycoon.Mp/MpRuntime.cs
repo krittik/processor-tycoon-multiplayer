@@ -74,6 +74,7 @@ internal sealed class MpRuntime
         catch (Exception e) { Fail("Could not host: " + e.Message); End(); }
     }
 
+    public string ClientId => clientId;
     public IReadOnlyList<(string sessionId, string record, string checkpoint, DateTime written)> Resumable() => SaveIO.Resumable(clientId);
 
     // D10: continue a saved session from this machine's latest checkpoint, as its host. Other players rejoin with Join.
